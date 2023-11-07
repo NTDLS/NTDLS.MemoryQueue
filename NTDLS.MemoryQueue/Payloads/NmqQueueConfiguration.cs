@@ -1,12 +1,12 @@
 ﻿using NTDLS.StreamFraming.Payloads;
 
-namespace NTDLS.MemoryQueue.Payloads.Public
+namespace NTDLS.MemoryQueue.Payloads
 {
-    public class NmqConfiguration : IFrameNotification
+    public class NmqQueueConfiguration : IFrameNotification
     {
         public string Name { get; set; }
 
-        public NmqConfiguration(string name)
+        public NmqQueueConfiguration(string name)
         {
             Name = name;
         }

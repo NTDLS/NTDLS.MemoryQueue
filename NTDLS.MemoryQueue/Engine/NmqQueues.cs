@@ -1,4 +1,4 @@
-﻿using NTDLS.MemoryQueue.Payloads.Public;
+﻿using NTDLS.MemoryQueue.Payloads;
 using NTDLS.ReliableMessaging;
 using System.Diagnostics.CodeAnalysis;
 
@@ -15,37 +15,37 @@ namespace NTDLS.MemoryQueue.Engine
             Server = server;
         }
 
-        public void Subscribe(Guid connectionId, NmqSubscribe subscribe)
+        public void Subscribe(Guid connectionId, string queueName)
         {
-            if (TryGet(subscribe.QueueName, out var queue) == false)
+            if (TryGet(queueName, out var queue) == false)
             {
-                throw new Exception($"The queue does not exists: {subscribe.QueueName}.");
+                throw new Exception($"The queue does not exists: {queueName}.");
             }
 
             queue.Subscribers.Add(connectionId);
         }
 
-        public void Unsubscribe(Guid connectionId, NmqUnsubscribe unsubscribe)
+        public void Unsubscribe(Guid connectionId, string queueName)
         {
-            if (TryGet(unsubscribe.QueueName, out var queue) == false)
+            if (TryGet(queueName, out var queue) == false)
             {
-                throw new Exception($"The queue does not exists: {unsubscribe.QueueName}.");
+                throw new Exception($"The queue does not exists: {queueName}.");
             }
 
             queue.Subscribers.Remove(connectionId);
         }
 
-        public void Equeue(Guid connectionId, NmqEnqueue enqueue)
+        public void Equeue(Guid connectionId, string queueName, string payload)
         {
-            if (TryGet(enqueue.QueueName, out var queue) == false)
+            if (TryGet(queueName, out var queue) == false)
             {
-                throw new Exception($"The queue does not exists: {enqueue.QueueName}.");
+                throw new Exception($"The queue does not exists: {queueName}.");
             }
 
-            queue.AddMessage(enqueue);
+            queue.AddMessage(payload);
         }
 
-        public void Add(NmqConfiguration config)
+        public void Add(NmqQueueConfiguration config)
         {
             if (ContainsKey(config.Name))
             {

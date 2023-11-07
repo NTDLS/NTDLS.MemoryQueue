@@ -1,5 +1,5 @@
 ﻿using NTDLS.MemoryQueue.Payloads;
-using NTDLS.MemoryQueue.Payloads.Public;
+using NTDLS.MemoryQueue.Payloads.InternalCommunication;
 using NTDLS.ReliableMessaging;
 using NTDLS.Semaphore;
 
@@ -12,11 +12,11 @@ namespace NTDLS.MemoryQueue.Engine
         private NmqQueues _queues;
 
         public string Key { get; private set; }
-        public NmqConfiguration Configuration { get; private set; }
+        public NmqQueueConfiguration Configuration { get; private set; }
         public HashSet<Guid> Subscribers { get; private set; } = new();
         public CriticalResource<List<NmqQueuedMessage>> Messages { get; private set; } = new();
 
-        public NmqQueue(NmqQueues queues, NmqConfiguration config)
+        public NmqQueue(NmqQueues queues, NmqQueueConfiguration config)
         {
             _queues = queues;
             _keepRunning = true;
@@ -32,8 +32,8 @@ namespace NTDLS.MemoryQueue.Engine
             _distributionThread.Join();
         }
 
-        public void AddMessage(NmqEnqueue enqueue)
-            => Messages.Use((o) => o.Add(new NmqQueuedMessage(enqueue.Payload)));
+        public void AddMessage(string payload)
+            => Messages.Use((o) => o.Add(new NmqQueuedMessage(payload)));
 
         public void Subscribe(Guid connectionId)
             => Subscribers.Add(connectionId);

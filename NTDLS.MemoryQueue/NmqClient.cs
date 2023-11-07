@@ -1,5 +1,5 @@
 ﻿using NTDLS.MemoryQueue.Payloads;
-using NTDLS.MemoryQueue.Payloads.Public;
+using NTDLS.MemoryQueue.Payloads.InternalCommunication;
 using NTDLS.StreamFraming.Payloads;
 using System.Net;
 using System.Net.Sockets;
@@ -48,7 +48,7 @@ namespace NTDLS.ReliableMessaging
         /// <param name="client">The instance of the client that is calling the event.</param>
         /// <param name="connectionId">The id of the client which send the message.</param>
         /// <param name="payload"></param>
-        public delegate void MessageReceivedEvent(NmqClient client, NmqClientNotificationMessage message);
+        public delegate void MessageReceivedEvent(NmqClient client, NmqMessageReceivedEventParam message);
 
         /*
         /// <summary>
@@ -66,10 +66,10 @@ namespace NTDLS.ReliableMessaging
         */
         #endregion
 
-        public void CreateQueue(NmqConfiguration config)
+        public void CreateQueue(NmqQueueConfiguration configuration)
         {
             Utility.EnsureNotNull(_activeConnection);
-            _activeConnection.SendNotification(config);
+            _activeConnection.SendNotification(new NmqCreateQueue(configuration));
         }
 
         public void Enqueue(string queueName, string text)
@@ -178,7 +178,7 @@ namespace NTDLS.ReliableMessaging
                     throw new Exception("The notification message hander event was not handled.");
                 }
 
-                var clientNotificationMessage = new NmqClientNotificationMessage()
+                var clientNotificationMessage = new NmqMessageReceivedEventParam()
                 {
                     Payload = broadcastMessage.Payload
                 };

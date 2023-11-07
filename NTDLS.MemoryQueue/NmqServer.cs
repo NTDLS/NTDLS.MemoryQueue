@@ -1,5 +1,6 @@
 ﻿using NTDLS.MemoryQueue.Engine;
-using NTDLS.MemoryQueue.Payloads.Public;
+using NTDLS.MemoryQueue.Payloads;
+using NTDLS.MemoryQueue.Payloads.InternalCommunication;
 using NTDLS.Semaphore;
 using NTDLS.StreamFraming.Payloads;
 using System.Net;
@@ -70,10 +71,10 @@ namespace NTDLS.ReliableMessaging
 
         #endregion
 
-        public void CreateQueue(NmqConfiguration config) => _queues.Use((o) => o.Add(config));
-        public void Subscribe(Guid connectionId, NmqSubscribe subscribe) => _queues.Use((o) => o.Subscribe(connectionId, subscribe));
-        public void Unsubscribe(Guid connectionId, NmqUnsubscribe unsubscribe) => _queues.Use((o) => o.Unsubscribe(connectionId, unsubscribe));
-        public void Equeue(Guid connectionId, NmqEnqueue enqueue) => _queues.Use((o) => o.Equeue(connectionId, enqueue));
+        public void CreateQueue(NmqQueueConfiguration config) => _queues.Use((o) => o.Add(config));
+        public void Subscribe(Guid connectionId, string queueName) => _queues.Use((o) => o.Subscribe(connectionId, queueName));
+        public void Unsubscribe(Guid connectionId, string queueName) => _queues.Use((o) => o.Unsubscribe(connectionId, queueName));
+        public void Equeue(Guid connectionId, string queueName, string payload) => _queues.Use((o) => o.Equeue(connectionId, queueName, payload));
 
         /// <summary>
         /// Starts the message server.
@@ -199,21 +200,21 @@ namespace NTDLS.ReliableMessaging
         void IMessageHub.InvokeOnNotificationReceived(Guid connectionId, IFrameNotification payload)
         {
             //Intercept notifications to see if they are Client->Server commands.
-            if (payload is NmqConfiguration config)
+            if (payload is NmqCreateQueue createQueue)
             {
-                CreateQueue(config);
+                CreateQueue(createQueue.Configuration);
             }
             else if (payload is NmqSubscribe subscribe)
             {
-                Subscribe(connectionId, subscribe);
+                Subscribe(connectionId, subscribe.QueueName);
             }
             else if (payload is NmqUnsubscribe unsubscribe)
             {
-                Unsubscribe(connectionId, unsubscribe);
+                Unsubscribe(connectionId, unsubscribe.QueueName);
             }
             else if (payload is NmqEnqueue enqueue)
             {
-                Equeue(connectionId, enqueue);
+                Equeue(connectionId, enqueue.QueueName, enqueue.Payload);
             }
             else
             {

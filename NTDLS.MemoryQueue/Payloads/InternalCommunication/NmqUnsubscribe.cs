@@ -1,8 +1,8 @@
 ﻿using NTDLS.StreamFraming.Payloads;
 
-namespace NTDLS.MemoryQueue.Payloads.Public
+namespace NTDLS.MemoryQueue.Payloads.InternalCommunication
 {
-    public class NmqUnsubscribe : IFrameNotification
+    internal class NmqUnsubscribe : IFrameNotification
     {
         public string QueueName { get; set; }
 

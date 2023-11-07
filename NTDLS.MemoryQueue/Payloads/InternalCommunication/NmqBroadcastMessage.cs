@@ -1,7 +1,7 @@
 ﻿using NTDLS.MemoryQueue.Engine;
 using NTDLS.StreamFraming.Payloads;
 
-namespace NTDLS.MemoryQueue.Payloads
+namespace NTDLS.MemoryQueue.Payloads.InternalCommunication
 {
     internal class NmqBroadcastMessage : IFrameNotification
     {

@@ -1,4 +1,4 @@
-﻿using NTDLS.MemoryQueue.Payloads.Public;
+﻿using NTDLS.MemoryQueue.Payloads;
 using NTDLS.ReliableMessaging;
 
 namespace TestHarness
@@ -48,14 +48,14 @@ namespace TestHarness
 
             //Start a client and connect to the server.
             var client = new NmqClient();
-            client.OnMessageReceived += (NmqClient client, NmqClientNotificationMessage message) =>
+            client.OnMessageReceived += (NmqClient client, NmqMessageReceivedEventParam message) =>
             {
                 Console.WriteLine($"Client received message from server: {message.Payload}");
             };
 
             client.Connect("localhost", 45784);
 
-            client.CreateQueue(new NmqConfiguration("MyFirstQueue"));
+            client.CreateQueue(new NmqQueueConfiguration("MyFirstQueue"));
             client.Subscribe("MyFirstQueue");
 
             client.Enqueue("MyFirstQueue", "This is my message");
