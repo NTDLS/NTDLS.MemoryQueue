@@ -1,0 +1,53 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TargetFrameworks>net6.0;net7.0</TargetFrameworks>
+    <Title>NTDLS.ReliableMessaging</Title>
+    <Authors>NetworkDLS</Authors>
+    <Nullable>Enable</Nullable>
+    <Company>NetworkDLS</Company>
+    <Description>Simple TCPIP wrapper that allows for easy one way or two way IPC with notification and query/reply support.</Description>
+    <Copyright>Copyright © 2023 NetworkDLS</Copyright>
+    <PackageProjectUrl>https://github.com/NTDLS/NTDLS.ReliableMessaging</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/NTDLS/NTDLS.ReliableMessaging</RepositoryUrl>
+    <RepositoryType>Git</RepositoryType>
+    <PackageReleaseNotes>
+      Resolved race condition on stopping server with connected clients.
+    </PackageReleaseNotes>
+    <AssemblyVersion>1.2.0</AssemblyVersion>
+    <FileVersion>1.2.0</FileVersion>
+    <VersionPrefix>1.2.0</VersionPrefix>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <PackageTags>txpip;ipc;stream;messaging;message-framing;</PackageTags>
+    <IncludeSymbols>False</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <Version>$(VersionPrefix)</Version>
+    <GeneratePackageOnBuild>False</GeneratePackageOnBuild>
+    <GenerateDocumentationFile>False</GenerateDocumentationFile>
+    <PackageIcon>128.png</PackageIcon>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <OutputType>Library</OutputType>
+    <ApplicationIcon>Logo.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Content Include="Logo.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\Images\128.png">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
+    <None Include="..\README.md">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NTDLS.StreamFraming" Version="1.0.4" />
+  </ItemGroup>
+
+</Project>

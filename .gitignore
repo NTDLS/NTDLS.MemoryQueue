@@ -1,0 +1,14 @@
+
+.vs/
+
+NTDLS.ReliableMessaging/obj/
+
+NTDLS.ReliableMessaging/bin/
+
+TestHarness/obj/
+
+TestHarness/bin/
+
+NTDLS.MemoryQueue/bin/
+
+NTDLS.MemoryQueue/obj/
