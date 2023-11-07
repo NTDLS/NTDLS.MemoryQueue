@@ -4,16 +4,24 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace NTDLS.MemoryQueue.Engine
 {
-    internal class NmqQueues
+    internal class NmqQueueManager
     {
         public NmqServer? Server { get; private set; }
-
-        public List<NmqQueue> Collection { get; private set; } = new();
+        public List<NmqQueue> Queues { get; private set; } = new();
 
         public void SetServer(NmqServer server)
         {
             Server = server;
         }
+
+        public void Shutdown(bool waitForThreadToExit)
+        {
+            foreach (var queue in Queues)
+            {
+                queue.Shutdown(waitForThreadToExit);
+            }
+        }
+
 
         public void Subscribe(Guid connectionId, string queueName)
         {
@@ -53,20 +61,20 @@ namespace NTDLS.MemoryQueue.Engine
             }
 
             var queue = new NmqQueue(this, config);
-            Collection.Add(queue);
+            Queues.Add(queue);
         }
 
         public bool TryGet(string key, [NotNullWhen(true)] out NmqQueue? outQueu)
         {
             key = key.ToLower();
-            outQueu = Collection.Where(o => o.Key == key).FirstOrDefault();
+            outQueu = Queues.Where(o => o.Key == key).FirstOrDefault();
             return outQueu != null;
         }
 
         public bool ContainsKey(string key)
         {
             key = key.ToLower();
-            return Collection.Any(o => o.Key == key);
+            return Queues.Any(o => o.Key == key);
         }
     }
 }

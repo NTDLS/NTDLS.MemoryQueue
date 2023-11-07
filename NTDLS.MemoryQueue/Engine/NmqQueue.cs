@@ -9,27 +9,31 @@ namespace NTDLS.MemoryQueue.Engine
     {
         private readonly Thread _distributionThread;
         private bool _keepRunning = false;
-        private NmqQueues _queues;
+        private readonly NmqQueueManager _queueManager;
 
         public string Key { get; private set; }
         public NmqQueueConfiguration Configuration { get; private set; }
         public HashSet<Guid> Subscribers { get; private set; } = new();
         public CriticalResource<List<NmqQueuedMessage>> Messages { get; private set; } = new();
 
-        public NmqQueue(NmqQueues queues, NmqQueueConfiguration config)
+        public NmqQueue(NmqQueueManager queueManager, NmqQueueConfiguration config)
         {
-            _queues = queues;
-            _keepRunning = true;
             Configuration = config;
             Key = config.Name.ToLower();
+
+            _queueManager = queueManager;
+            _keepRunning = true;
             _distributionThread = new Thread(DistributionThreadProc);
             _distributionThread.Start();
         }
 
-        public void Shutdown()
+        public void Shutdown(bool waitForThreadToExit)
         {
             _keepRunning = false;
-            _distributionThread.Join();
+            if (waitForThreadToExit)
+            {
+                _distributionThread.Join();
+            }
         }
 
         public void AddMessage(string payload)
@@ -43,7 +47,7 @@ namespace NTDLS.MemoryQueue.Engine
 
         private void DistributionThreadProc()
         {
-            Utility.EnsureNotNull(_queues.Server);
+            Utility.EnsureNotNull(_queueManager.Server);
 
             while (_keepRunning)
             {
@@ -72,7 +76,7 @@ namespace NTDLS.MemoryQueue.Engine
                     {
                         if (message.SatisfiedSubscribers.Contains(subscriber) == false) //Make sure we have not already sent this message to this subscriber. 
                         {
-                            _queues.Server.Notify(subscriber, new NmqBroadcastMessage(message));
+                            _queueManager.Server.Notify(subscriber, new NmqBroadcastMessage(message));
                             message.SatisfiedSubscribers.Add(subscriber);
                         }
                     }

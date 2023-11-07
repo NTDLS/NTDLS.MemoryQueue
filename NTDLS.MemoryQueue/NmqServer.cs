@@ -18,7 +18,7 @@ namespace NTDLS.ReliableMessaging
         private Thread? _listenerThreadProc;
         private bool _keepRunning;
 
-        private readonly CriticalResource<NmqQueues> _queues = new();
+        private readonly CriticalResource<NmqQueueManager> _queues = new();
 
         #region Events.
 
@@ -105,11 +105,14 @@ namespace NTDLS.ReliableMessaging
             _keepRunning = false;
             Utility.TryAndIgnore(() => _listener?.Stop());
             _listenerThreadProc?.Join();
+
             _activeConnections.Use((o) =>
             {
                 o.ForEach(c => c.Disconnect(true));
                 o.Clear();
             });
+
+            _queues.Use((o) => o.Shutdown(true));
         }
 
         void ListenerThreadProc()
