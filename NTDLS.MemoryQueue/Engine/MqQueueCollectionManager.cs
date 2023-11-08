@@ -5,7 +5,7 @@ namespace NTDLS.MemoryQueue.Engine
     /// <summary>
     /// The collection manager for all of the queues.
     /// </summary>
-    internal class MqQueueManager
+    internal class MqQueueCollectionManager
     {
         /// <summary>
         /// The server that is using this queue manager.

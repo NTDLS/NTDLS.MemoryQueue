@@ -17,7 +17,7 @@ namespace NTDLS.MemoryQueue
         private Thread? _listenerThreadProc;
         private bool _keepRunning;
 
-        private readonly CriticalResource<MqQueueManager> _qeueManager = new();
+        private readonly CriticalResource<MqQueueCollectionManager> _qeueManager = new();
 
         #region Events.
 

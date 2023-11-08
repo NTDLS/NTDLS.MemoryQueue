@@ -11,7 +11,7 @@ namespace NTDLS.MemoryQueue.Engine
     {
         private readonly Thread _distributionThread;
         private bool _keepRunning = false;
-        private readonly MqQueueManager _queueManager;
+        private readonly MqQueueCollectionManager _queueCollectionManager;
 
         /// <summary>
         /// The ToLowered name of the queue.
@@ -38,12 +38,12 @@ namespace NTDLS.MemoryQueue.Engine
         /// </summary>
         /// <param name="queueManager">A reference to the queue manager.</param>
         /// <param name="configuration">The configuration that is used to define the parameters of the new queue.</param>
-        public MqQueue(MqQueueManager queueManager, MqQueueConfiguration configuration)
+        public MqQueue(MqQueueCollectionManager queueManager, MqQueueConfiguration configuration)
         {
             Configuration = configuration;
             Key = configuration.Name.ToLower();
 
-            _queueManager = queueManager;
+            _queueCollectionManager = queueManager;
             _keepRunning = true;
             _distributionThread = new Thread(DistributionThreadProc);
             _distributionThread.Start();
@@ -113,7 +113,7 @@ namespace NTDLS.MemoryQueue.Engine
         {
             Thread.CurrentThread.Name = $"NmqQueue:DistributionThreadProc:{Environment.CurrentManagedThreadId}";
 
-            Utility.EnsureNotNull(_queueManager.Server);
+            Utility.EnsureNotNull(_queueCollectionManager.Server);
 
             while (_keepRunning)
             {
@@ -144,18 +144,18 @@ namespace NTDLS.MemoryQueue.Engine
                         {
                             if (message is MqQueuedMessage queuedMessage)
                             {
-                                _queueManager.Server.Notify(subscriber, new MqClientBoundMessage(queuedMessage.PayloadJson, queuedMessage.PayloadType));
+                                _queueCollectionManager.Server.Notify(subscriber, new MqClientBoundMessage(queuedMessage.PayloadJson, queuedMessage.PayloadType));
                             }
                             else if (message is MqQueuedQuery queuedQuery)
                             {
-                                _queueManager.Server.Notify(subscriber, new MqClientBoundQuery(Configuration.Name,
+                                _queueCollectionManager.Server.Notify(subscriber, new MqClientBoundQuery(Configuration.Name,
                                     queuedQuery.QueryId, queuedQuery.PayloadJson, queuedQuery.PayloadType, queuedQuery.ReplyType));
                             }
                             else if (message is MqQueuedQueryReply queuedQueryReply)
                             {
                                 if (subscriber == queuedQueryReply.OriginationId) //Only send the reply to the connection that originated the query.
                                 {
-                                    _queueManager.Server.Notify(subscriber,
+                                    _queueCollectionManager.Server.Notify(subscriber,
                                         new MqClientBoundQueryReply(Configuration.Name, queuedQueryReply.OriginationId,
                                             queuedQueryReply.QueryId, queuedQueryReply.PayloadJson, queuedQueryReply.PayloadType, queuedQueryReply.ReplyType));
                                 }
