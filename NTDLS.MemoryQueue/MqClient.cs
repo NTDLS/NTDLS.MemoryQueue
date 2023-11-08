@@ -12,12 +12,12 @@ namespace NTDLS.MemoryQueue
     /// <summary>
     /// Connects to a MessageServer then sends/received and processes notifications/queries.
     /// </summary>
-    public class NmqClient : INmqMemoryQueue
+    public class MqClient : IMqMemoryQueue
     {
         private readonly TcpClient _tcpClient = new();
-        private PeerConnection? _activeConnection;
+        private MqPeerConnection? _activeConnection;
         private bool _keepRunning;
-        private readonly CriticalResource<Dictionary<Guid, QueryWaitingForReply>> _queriesWaitingForReply = new();
+        private readonly CriticalResource<Dictionary<Guid, MqQueryWaitingForReply>> _queriesWaitingForReply = new();
 
         #region Events.
 
@@ -30,7 +30,7 @@ namespace NTDLS.MemoryQueue
         /// </summary>
         /// <param name="client">The instance of the client that is calling the event.</param>
         /// <param name="connectionId">The id of the client which was connected.</param>
-        public delegate void ConnectedEvent(NmqClient client, Guid connectionId);
+        public delegate void ConnectedEvent(MqClient client, Guid connectionId);
 
         /// <summary>
         /// Event fired when a client is disconnected from the server.
@@ -41,7 +41,7 @@ namespace NTDLS.MemoryQueue
         /// </summary>
         /// <param name="client">The instance of the client that is calling the event.</param>
         /// <param name="connectionId">The id of the client which was disconnected.</param>
-        public delegate void DisconnectedEvent(NmqClient client, Guid connectionId);
+        public delegate void DisconnectedEvent(MqClient client, Guid connectionId);
 
         /// <summary>
         /// Event fired when a message is received from a client.
@@ -53,7 +53,7 @@ namespace NTDLS.MemoryQueue
         /// <param name="client">The instance of the client that is calling the event.</param>
         /// <param name="connectionId">The id of the client which send the message.</param>
         /// <param name="payload"></param>
-        public delegate void MessageReceivedEvent(NmqClient client, INmqMessage message);
+        public delegate void MessageReceivedEvent(MqClient client, IMqMessage message);
 
         /// <summary>
         /// Event fired when a query is received from a client.
@@ -66,7 +66,7 @@ namespace NTDLS.MemoryQueue
         /// <param name="connectionId">The id of the client which send the query.</param>
         /// <param name="payload"></param>
         /// <returns></returns>
-        public delegate INmqQueryReply QueryReceivedEvent(NmqClient client, INmqQuery query);
+        public delegate IMqQueryReply QueryReceivedEvent(MqClient client, IMqQuery query);
 
         #endregion
 
@@ -74,10 +74,10 @@ namespace NTDLS.MemoryQueue
         /// Creates a new queue with the given configuration.
         /// </summary>
         /// <param name="configuration">The configuration for the new queue.</param>
-        public void CreateQueue(NmqQueueConfiguration configuration)
+        public void CreateQueue(MqQueueConfiguration configuration)
         {
             Utility.EnsureNotNull(_activeConnection);
-            _activeConnection.SendNotification(new NmqCreateQueue(configuration));
+            _activeConnection.SendNotification(new MqCreateQueue(configuration));
         }
 
         /// <summary>
@@ -87,7 +87,7 @@ namespace NTDLS.MemoryQueue
         public void DeleteQueue(string queueName)
         {
             Utility.EnsureNotNull(_activeConnection);
-            _activeConnection.SendNotification(new NmqDeleteQueue(queueName));
+            _activeConnection.SendNotification(new MqDeleteQueue(queueName));
         }
 
         /// <summary>
@@ -96,13 +96,13 @@ namespace NTDLS.MemoryQueue
         /// <param name="queueName">The name of the queue to add the message to.</param>
         /// <param name="message">The message object.</param>
         /// <exception cref="Exception"></exception>
-        public void EnqueueMessage(string queueName, INmqMessage message)
+        public void EnqueueMessage(string queueName, IMqMessage message)
         {
             Utility.EnsureNotNull(_activeConnection);
 
             var payloadJson = JsonConvert.SerializeObject(message);
             var payloadType = message.GetType().AssemblyQualifiedName ?? throw new Exception("The message type could not be determined.");
-            _activeConnection.SendNotification(new NmqEnqueueMessage(queueName, payloadJson, payloadType));
+            _activeConnection.SendNotification(new MqEnqueueMessage(queueName, payloadJson, payloadType));
         }
 
         /// <summary>
@@ -112,10 +112,10 @@ namespace NTDLS.MemoryQueue
         /// <param name="payloadJson">The payload of the reply</param>
         /// <param name="payloadType">The type of the original query.</param>
         /// <param name="replyType">The type that the reply payload can be deserialized to.</param>
-        private void EnqueueQueryReply(NmqClientBoundQuery query, string payloadJson, string payloadType, string replyType)
+        private void EnqueueQueryReply(MqClientBoundQuery query, string payloadJson, string payloadType, string replyType)
         {
             Utility.EnsureNotNull(_activeConnection);
-            _activeConnection.SendNotification(new NmqEnqueueQueryReply(query.QueueName, query.QueryId, payloadJson, payloadType, replyType));
+            _activeConnection.SendNotification(new MqEnqueueQueryReply(query.QueueName, query.QueryId, payloadJson, payloadType, replyType));
         }
 
         /// <summary>
@@ -127,11 +127,11 @@ namespace NTDLS.MemoryQueue
         /// <param name="secondsTimeout">The number of seconds to wait for a reply before egiving up.</param>
         /// <returns></returns>
         /// <exception cref="Exception"></exception>
-        public async Task<T?> EnqueueQuery<T>(string queueName, INmqQuery query, int secondsTimeout = 30) where T : INmqQueryReply
+        public async Task<T?> EnqueueQuery<T>(string queueName, IMqQuery query, int secondsTimeout = 30) where T : IMqQueryReply
         {
             Utility.EnsureNotNull(_activeConnection);
 
-            var waitingQuery = new QueryWaitingForReply();
+            var waitingQuery = new MqQueryWaitingForReply();
 
             _queriesWaitingForReply.Use((o)
                 => o.Add(waitingQuery.QueryId, waitingQuery));
@@ -140,7 +140,7 @@ namespace NTDLS.MemoryQueue
             var payloadType = query.GetType().AssemblyQualifiedName ?? throw new Exception("The query type could not be determined.");
             var replyType = typeof(T).AssemblyQualifiedName ?? throw new Exception("The reply type could not be determined.");
 
-            _activeConnection.SendNotification(new NmqEnqueueQuery(queueName, waitingQuery.QueryId, payloadJson, payloadType, replyType));
+            _activeConnection.SendNotification(new MqEnqueueQuery(queueName, waitingQuery.QueryId, payloadJson, payloadType, replyType));
 
             return await Task.Run(() =>
             {
@@ -163,7 +163,7 @@ namespace NTDLS.MemoryQueue
         public void Subscribe(string queueName)
         {
             Utility.EnsureNotNull(_activeConnection);
-            _activeConnection.SendNotification(new NmqSubscribe(queueName));
+            _activeConnection.SendNotification(new MqSubscribe(queueName));
         }
 
         /// <summary>
@@ -173,7 +173,7 @@ namespace NTDLS.MemoryQueue
         public void Unsubscribe(string queueName)
         {
             Utility.EnsureNotNull(_activeConnection);
-            _activeConnection.SendNotification(new NmqUnsubscribe(queueName));
+            _activeConnection.SendNotification(new MqUnsubscribe(queueName));
         }
 
         /// <summary>
@@ -190,7 +190,7 @@ namespace NTDLS.MemoryQueue
             _keepRunning = true;
 
             _tcpClient.Connect(hostName, port);
-            _activeConnection = new PeerConnection(this, _tcpClient);
+            _activeConnection = new MqPeerConnection(this, _tcpClient);
             _activeConnection.RunAsync();
         }
 
@@ -208,7 +208,7 @@ namespace NTDLS.MemoryQueue
             _keepRunning = true;
 
             _tcpClient.Connect(ipAddress, port);
-            _activeConnection = new PeerConnection(this, _tcpClient);
+            _activeConnection = new MqPeerConnection(this, _tcpClient);
             _activeConnection.RunAsync();
         }
 
@@ -221,38 +221,38 @@ namespace NTDLS.MemoryQueue
             _activeConnection?.Disconnect(true);
         }
 
-        void INmqMemoryQueue.InvokeOnConnected(Guid connectionId)
+        void IMqMemoryQueue.InvokeOnConnected(Guid connectionId)
         {
             OnConnected?.Invoke(this, connectionId);
         }
 
-        void INmqMemoryQueue.InvokeOnDisconnected(Guid connectionId)
+        void IMqMemoryQueue.InvokeOnDisconnected(Guid connectionId)
         {
             _activeConnection = null;
             OnDisconnected?.Invoke(this, connectionId);
         }
 
-        void INmqMemoryQueue.InvokeOnNotificationReceived(Guid connectionId, IFrameNotification payload)
+        void IMqMemoryQueue.InvokeOnNotificationReceived(Guid connectionId, IFrameNotification payload)
         {
-            if (payload is NmqClientBoundMessage clientBoundMessage)
+            if (payload is MqClientBoundMessage clientBoundMessage)
             {
                 if (OnMessageReceived == null)
                 {
                     throw new Exception("The client bound notification event is not handled.");
                 }
 
-                var message = Utility.ExtractGenericType<INmqMessage>(clientBoundMessage.PayloadJson, clientBoundMessage.PayloadType);
+                var message = Utility.ExtractGenericType<IMqMessage>(clientBoundMessage.PayloadJson, clientBoundMessage.PayloadType);
 
                 OnMessageReceived.Invoke(this, message);
             }
-            else if (payload is NmqClientBoundQuery clientBoundQuery)
+            else if (payload is MqClientBoundQuery clientBoundQuery)
             {
                 if (OnQueryReceived == null)
                 {
                     throw new Exception("The client bound query event is not handled.");
                 }
 
-                var query = Utility.ExtractGenericType<INmqQuery>(clientBoundQuery.PayloadJson, clientBoundQuery.PayloadType);
+                var query = Utility.ExtractGenericType<IMqQuery>(clientBoundQuery.PayloadJson, clientBoundQuery.PayloadType);
 
                 var queryResultPayload = OnQueryReceived.Invoke(this, query);
 
@@ -260,7 +260,7 @@ namespace NTDLS.MemoryQueue
 
                 EnqueueQueryReply(clientBoundQuery, replyPayloadJson, clientBoundQuery.PayloadType, clientBoundQuery.ReplyType);
             }
-            else if (payload is NmqClientBoundQueryReply clientBoundQueryReply)
+            else if (payload is MqClientBoundQueryReply clientBoundQueryReply)
             {
                 _queriesWaitingForReply.Use((o) =>
                 {

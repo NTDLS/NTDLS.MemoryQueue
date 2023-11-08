@@ -2,22 +2,20 @@
 
 namespace NTDLS.MemoryQueue.Engine.Payloads.ServerBound
 {
-    /// <summary>
-    /// This is a enqueue query request that is sent from the client to the server.
-    /// </summary>
-    internal class NmqEnqueueQuery : IFrameNotification
+    /// This is a enqueue query reply request that is sent from the client to the server.
+    internal class MqEnqueueQueryReply : IFrameNotification
     {
-        public Guid QueryId { get; set; }
         public string QueueName { get; set; }
         public string PayloadJson { get; set; }
+        public Guid QueryId { get; set; }
         public string PayloadType { get; set; }
         public string ReplyType { get; set; }
 
-        public NmqEnqueueQuery(string queueName, Guid queryId, string payloadJson, string payloadType, string replyType)
+        public MqEnqueueQueryReply(string queueName, Guid queryId, string payloadJson, string payloadType, string replyType)
         {
             QueueName = queueName;
-            QueryId = queryId;
             PayloadJson = payloadJson;
+            QueryId = queryId;
             PayloadType = payloadType;
             ReplyType = replyType;
         }

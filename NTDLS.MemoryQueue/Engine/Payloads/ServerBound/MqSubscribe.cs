@@ -3,13 +3,13 @@
 namespace NTDLS.MemoryQueue.Engine.Payloads.ServerBound
 {
     /// <summary>
-    /// This is a delete queue request that is sent from the client to the server.
+    /// This is a queue subscription request that is sent from the client to the server.
     /// </summary>
-    internal class NmqDeleteQueue : IFrameNotification
+    internal class MqSubscribe : IFrameNotification
     {
         public string QueueName { get; set; }
 
-        public NmqDeleteQueue(string queueName)
+        public MqSubscribe(string queueName)
         {
             QueueName = queueName;
         }

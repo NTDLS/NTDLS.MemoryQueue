@@ -3,7 +3,7 @@
     /// <summary>
     /// Represents a "physical" message that is waiting in the queue.
     /// </summary>
-    internal class NmqQueuedMessage : INmqQueuedItem
+    internal class MqQueuedMessage : IMqQueuedItem
     {
         public DateTime CreatedDate { get; private set; } = DateTime.UtcNow;
         public string PayloadJson { get; private set; }
@@ -14,7 +14,7 @@
         /// </summary>
         public HashSet<Guid> SatisfiedSubscribers { get; set; } = new();
 
-        public NmqQueuedMessage(string payloadJson, string payloadType)
+        public MqQueuedMessage(string payloadJson, string payloadType)
         {
             PayloadJson = payloadJson;
             PayloadType = payloadType;

@@ -10,14 +10,14 @@ namespace NTDLS.MemoryQueue
     /// <summary>
     /// Listens for connections from MessageClients and processes the incoming notifications/queries.
     /// </summary>
-    public class NmqServer : INmqMemoryQueue
+    public class MqServer : IMqMemoryQueue
     {
         private TcpListener? _listener;
-        private readonly CriticalResource<List<PeerConnection>> _activeConnections = new();
+        private readonly CriticalResource<List<MqPeerConnection>> _activeConnections = new();
         private Thread? _listenerThreadProc;
         private bool _keepRunning;
 
-        private readonly CriticalResource<NmqQueueManager> _qeueManager = new();
+        private readonly CriticalResource<MqQueueManager> _qeueManager = new();
 
         #region Events.
 
@@ -30,7 +30,7 @@ namespace NTDLS.MemoryQueue
         /// </summary>
         /// <param name="server">The instance of the server that is calling the event.</param>
         /// <param name="connectionId">The id of the client which was connected.</param>
-        public delegate void ConnectedEvent(NmqServer server, Guid connectionId);
+        public delegate void ConnectedEvent(MqServer server, Guid connectionId);
 
         /// <summary>
         /// Event fired when a client is disconnected from the server.
@@ -41,11 +41,11 @@ namespace NTDLS.MemoryQueue
         /// </summary>
         /// <param name="server">The instance of the server that is calling the event.</param>
         /// <param name="connectionId">The id of the client which was disconnected.</param>
-        public delegate void DisconnectedEvent(NmqServer server, Guid connectionId);
+        public delegate void DisconnectedEvent(MqServer server, Guid connectionId);
 
         #endregion
 
-        public void CreateQueue(NmqQueueConfiguration config)
+        public void CreateQueue(MqQueueConfiguration config)
             => _qeueManager.Use((o) => o.Create(config));
 
         public void DeleteQueue(string queueName)
@@ -108,7 +108,7 @@ namespace NTDLS.MemoryQueue
                     {
                         if (_keepRunning) //Check again, we may have received a connection while shutting down.
                         {
-                            var activeConnection = new PeerConnection(this, tcpClient);
+                            var activeConnection = new MqPeerConnection(this, tcpClient);
                             _activeConnections.Use((o) => o.Add(activeConnection));
                             activeConnection.RunAsync();
                         }
@@ -161,12 +161,12 @@ namespace NTDLS.MemoryQueue
             return await connection.SendQuery<T>(query);
         }
 
-        void INmqMemoryQueue.InvokeOnConnected(Guid connectionId)
+        void IMqMemoryQueue.InvokeOnConnected(Guid connectionId)
         {
             OnConnected?.Invoke(this, connectionId);
         }
 
-        void INmqMemoryQueue.InvokeOnDisconnected(Guid connectionId)
+        void IMqMemoryQueue.InvokeOnDisconnected(Guid connectionId)
         {
             if (_keepRunning) //Avoid a race condition with the client thread waiting on a lock on _activeConnections that is held by Server.Stop().
             {
@@ -175,34 +175,34 @@ namespace NTDLS.MemoryQueue
             OnDisconnected?.Invoke(this, connectionId);
         }
 
-        void INmqMemoryQueue.InvokeOnNotificationReceived(Guid connectionId, IFrameNotification payload)
+        void IMqMemoryQueue.InvokeOnNotificationReceived(Guid connectionId, IFrameNotification payload)
         {
             //Intercept notifications to see if they are Client->Server commands.
-            if (payload is NmqCreateQueue createQueue)
+            if (payload is MqCreateQueue createQueue)
             {
                 CreateQueue(createQueue.Configuration);
             }
-            else if (payload is NmqDeleteQueue deleteQueue)
+            else if (payload is MqDeleteQueue deleteQueue)
             {
                 DeleteQueue(deleteQueue.QueueName);
             }
-            else if (payload is NmqSubscribe subscribe)
+            else if (payload is MqSubscribe subscribe)
             {
                 _qeueManager.Use((o) => o.Subscribe(connectionId, subscribe.QueueName));
             }
-            else if (payload is NmqUnsubscribe unsubscribe)
+            else if (payload is MqUnsubscribe unsubscribe)
             {
                 _qeueManager.Use((o) => o.Unsubscribe(connectionId, unsubscribe.QueueName));
             }
-            else if (payload is NmqEnqueueMessage enqueue)
+            else if (payload is MqEnqueueMessage enqueue)
             {
                 _qeueManager.Use((o) => o.EqueueMessage(enqueue.QueueName, enqueue.PayloadJson, enqueue.PayloadType));
             }
-            else if (payload is NmqEnqueueQuery enqueueQuery)
+            else if (payload is MqEnqueueQuery enqueueQuery)
             {
                 _qeueManager.Use((o) => o.EqueueQuery(connectionId, enqueueQuery.QueueName, enqueueQuery.QueryId, enqueueQuery.PayloadJson, enqueueQuery.PayloadType, enqueueQuery.ReplyType));
             }
-            else if (payload is NmqEnqueueQueryReply enqueueQueryReply)
+            else if (payload is MqEnqueueQueryReply enqueueQueryReply)
             {
                 _qeueManager.Use((o) => o.EqueueQueryReply(connectionId, enqueueQueryReply.QueueName, enqueueQueryReply.QueryId, enqueueQueryReply.PayloadJson, enqueueQueryReply.PayloadType, enqueueQueryReply.ReplyType));
             }

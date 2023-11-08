@@ -3,21 +3,23 @@
 namespace NTDLS.MemoryQueue.Engine.Payloads.ClientBound
 {
     /// <summary>
-    /// This is a query that is sent from the server to a client when the queues are being processed.
+    /// This is a query reply that is sent from the server to a client when the queues are being processed.
     /// </summary>
-    internal class NmqClientBoundQuery : IFrameNotification
+    internal class MqClientBoundQueryReply : IFrameNotification
     {
         public string QueueName { get; set; }
         public Guid QueryId { get; set; }
+        public Guid OriginationId { get; set; }
         public string PayloadJson { get; set; }
         public string PayloadType { get; set; }
         public string ReplyType { get; set; }
 
-        public NmqClientBoundQuery(string queueName, Guid queryId, string payloadJson, string payloadType, string replyType)
+        public MqClientBoundQueryReply(string queueName, Guid originationId, Guid queryId, string payloadJson, string payloadType, string replyType)
         {
             QueueName = queueName;
             QueryId = queryId;
             PayloadJson = payloadJson;
+            OriginationId = originationId;
             PayloadType = payloadType;
             ReplyType = replyType;
         }

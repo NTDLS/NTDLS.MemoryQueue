@@ -5,23 +5,23 @@ namespace NTDLS.MemoryQueue.Engine
     /// <summary>
     /// The collection manager for all of the queues.
     /// </summary>
-    internal class NmqQueueManager
+    internal class MqQueueManager
     {
         /// <summary>
         /// The server that is using this queue manager.
         /// </summary>
-        public NmqServer? Server { get; private set; }
+        public MqServer? Server { get; private set; }
 
         /// <summary>
         /// The collection of queues.
         /// </summary>
-        public List<NmqQueue> Queues { get; private set; } = new();
+        public List<MqQueue> Queues { get; private set; } = new();
 
         /// <summary>
         /// Since we are using a CriticalResource<>, we cant use a parameterized constructor so we have to set the server instance later.
         /// </summary>
         /// <param name="server"></param>
-        public void SetServer(NmqServer server)
+        public void SetServer(MqServer server)
         {
             Server = server;
         }
@@ -132,14 +132,14 @@ namespace NTDLS.MemoryQueue.Engine
         /// </summary>
         /// <param name="config"></param>
         /// <exception cref="Exception"></exception>
-        public void Create(NmqQueueConfiguration config)
+        public void Create(MqQueueConfiguration config)
         {
             if (Exists(config.Name))
             {
                 throw new Exception($"The queue already exists: {config.Name}.");
             }
 
-            var queue = new NmqQueue(this, config);
+            var queue = new MqQueue(this, config);
             Queues.Add(queue);
         }
 
@@ -162,7 +162,7 @@ namespace NTDLS.MemoryQueue.Engine
         /// <param name="key"></param>
         /// <param name="outQueu"></param>
         /// <returns></returns>
-        public bool TryGet(string key, [NotNullWhen(true)] out NmqQueue? outQueu)
+        public bool TryGet(string key, [NotNullWhen(true)] out MqQueue? outQueu)
         {
             key = key.ToLower();
             outQueu = Queues.Where(o => o.Key == key).FirstOrDefault();

@@ -4,18 +4,18 @@ using System.Net.Sockets;
 
 namespace NTDLS.MemoryQueue.Engine
 {
-    internal class PeerConnection
+    internal class MqPeerConnection
     {
         private readonly FrameBuffer _frameBuffer = new(16 * 1024);
         private readonly TcpClient _tcpClient; //The TCP/IP connection associated with this connection.
         private readonly Thread _dataPumpThread; //The thread that receives data for this connection.
         private readonly NetworkStream _stream; //The stream for the TCP/IP connection (used for reading and writing).
-        private readonly INmqMemoryQueue _hub;
+        private readonly IMqMemoryQueue _hub;
         private bool _keepRunning;
 
         public Guid Id { get; private set; }
 
-        public PeerConnection(INmqMemoryQueue hub, TcpClient tcpClient)
+        public MqPeerConnection(IMqMemoryQueue hub, TcpClient tcpClient)
         {
             Id = Guid.NewGuid();
             _hub = hub;

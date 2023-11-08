@@ -1,6 +1,6 @@
 ﻿namespace NTDLS.MemoryQueue
 {
-    public interface INmqMessage
+    public interface IMqQueryReply
     {
     }
 }

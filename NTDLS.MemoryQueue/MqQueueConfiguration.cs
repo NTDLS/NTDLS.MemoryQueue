@@ -2,11 +2,11 @@
 
 namespace NTDLS.MemoryQueue
 {
-    public class NmqQueueConfiguration : IFrameNotification
+    public class MqQueueConfiguration : IFrameNotification
     {
         public string Name { get; set; }
 
-        public NmqQueueConfiguration(string name)
+        public MqQueueConfiguration(string name)
         {
             Name = name;
         }

@@ -3,7 +3,7 @@
     /// <summary>
     /// Ties a QueryId to a wait event so that it can be signaled when (and if) the reply is received.
     /// </summary>
-    internal class QueryWaitingForReply
+    internal class MqQueryWaitingForReply
     {
         public string? PayloadJson { get; private set; }
         public Guid QueryId { get; set; } = Guid.NewGuid();

@@ -2,7 +2,7 @@
 
 namespace NTDLS.MemoryQueue
 {
-    internal interface INmqMemoryQueue
+    internal interface IMqMemoryQueue
     {
         internal void InvokeOnConnected(Guid connectionId);
         internal void InvokeOnDisconnected(Guid connectionId);

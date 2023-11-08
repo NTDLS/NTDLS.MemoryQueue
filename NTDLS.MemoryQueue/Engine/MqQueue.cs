@@ -7,11 +7,11 @@ namespace NTDLS.MemoryQueue.Engine
     /// <summary>
     /// A message queue. The queue manages its own subscribers, messages and is responsible for distribution of those messages to the respective subscribers.
     /// </summary>
-    internal class NmqQueue
+    internal class MqQueue
     {
         private readonly Thread _distributionThread;
         private bool _keepRunning = false;
-        private readonly NmqQueueManager _queueManager;
+        private readonly MqQueueManager _queueManager;
 
         /// <summary>
         /// The ToLowered name of the queue.
@@ -21,7 +21,7 @@ namespace NTDLS.MemoryQueue.Engine
         /// <summary>
         /// The configuration that was used to create the queue.
         /// </summary>
-        public NmqQueueConfiguration Configuration { get; private set; }
+        public MqQueueConfiguration Configuration { get; private set; }
 
         /// <summary>
         /// The ConnectionId of the connection that requested a subscription to this queue.
@@ -31,14 +31,14 @@ namespace NTDLS.MemoryQueue.Engine
         /// <summary>
         /// The messages that are waiting in the queue.
         /// </summary>
-        public CriticalResource<List<INmqQueuedItem>> Messages { get; private set; } = new();
+        public CriticalResource<List<IMqQueuedItem>> Messages { get; private set; } = new();
 
         /// <summary>
         /// Creates and starts a new queue.
         /// </summary>
         /// <param name="queueManager">A reference to the queue manager.</param>
         /// <param name="configuration">The configuration that is used to define the parameters of the new queue.</param>
-        public NmqQueue(NmqQueueManager queueManager, NmqQueueConfiguration configuration)
+        public MqQueue(MqQueueManager queueManager, MqQueueConfiguration configuration)
         {
             Configuration = configuration;
             Key = configuration.Name.ToLower();
@@ -68,7 +68,7 @@ namespace NTDLS.MemoryQueue.Engine
         /// <param name="payloadJson">The json of the object which is the subject of the message.</param>
         /// <param name="payloadType">The original type of the payload.</param>
         public void AddMessage(string payloadJson, string payloadType)
-            => Messages.Use((o) => o.Add(new NmqQueuedMessage(payloadJson, payloadType)));
+            => Messages.Use((o) => o.Add(new MqQueuedMessage(payloadJson, payloadType)));
 
         /// <summary>
         /// Adds a single query to the queue.
@@ -79,7 +79,7 @@ namespace NTDLS.MemoryQueue.Engine
         /// <param name="payloadType">The original type of the payload.</param>
         /// <param name="replyType">The type of the reply object. The json should be deserilizable to this type.</param>
         public void AddQuery(Guid originationId, Guid queryId, string payloadJson, string payloadType, string replyType)
-            => Messages.Use((o) => o.Add(new NmqQueuedQuery(originationId, queryId, payloadJson, payloadType, replyType)));
+            => Messages.Use((o) => o.Add(new MqQueuedQuery(originationId, queryId, payloadJson, payloadType, replyType)));
 
         /// <summary>
         /// Adds a single query-reply to the queue.
@@ -90,7 +90,7 @@ namespace NTDLS.MemoryQueue.Engine
         /// <param name="payloadType">The original type of the payload.</param>
         /// <param name="replyType">The type of the reply object. The json should be deserilizable to this type.</param>
         public void AddQueryReply(Guid originationId, Guid queryId, string payloadJson, string payloadType, string replyType)
-            => Messages.Use((o) => o.Add(new NmqQueuedQueryReply(originationId, queryId, payloadJson, payloadType, replyType)));
+            => Messages.Use((o) => o.Add(new MqQueuedQueryReply(originationId, queryId, payloadJson, payloadType, replyType)));
 
         /// <summary>
         /// Subscribes a given connection to the queue.
@@ -142,21 +142,21 @@ namespace NTDLS.MemoryQueue.Engine
                     {
                         if (message.SatisfiedSubscribers.Contains(subscriber) == false) //Make sure we have not already sent this message to this subscriber. 
                         {
-                            if (message is NmqQueuedMessage queuedMessage)
+                            if (message is MqQueuedMessage queuedMessage)
                             {
-                                _queueManager.Server.Notify(subscriber, new NmqClientBoundMessage(queuedMessage.PayloadJson, queuedMessage.PayloadType));
+                                _queueManager.Server.Notify(subscriber, new MqClientBoundMessage(queuedMessage.PayloadJson, queuedMessage.PayloadType));
                             }
-                            else if (message is NmqQueuedQuery queuedQuery)
+                            else if (message is MqQueuedQuery queuedQuery)
                             {
-                                _queueManager.Server.Notify(subscriber, new NmqClientBoundQuery(Configuration.Name,
+                                _queueManager.Server.Notify(subscriber, new MqClientBoundQuery(Configuration.Name,
                                     queuedQuery.QueryId, queuedQuery.PayloadJson, queuedQuery.PayloadType, queuedQuery.ReplyType));
                             }
-                            else if (message is NmqQueuedQueryReply queuedQueryReply)
+                            else if (message is MqQueuedQueryReply queuedQueryReply)
                             {
                                 if (subscriber == queuedQueryReply.OriginationId) //Only send the reply to the connection that originated the query.
                                 {
                                     _queueManager.Server.Notify(subscriber,
-                                        new NmqClientBoundQueryReply(Configuration.Name, queuedQueryReply.OriginationId,
+                                        new MqClientBoundQueryReply(Configuration.Name, queuedQueryReply.OriginationId,
                                             queuedQueryReply.QueryId, queuedQueryReply.PayloadJson, queuedQueryReply.PayloadType, queuedQueryReply.ReplyType));
                                 }
                             }

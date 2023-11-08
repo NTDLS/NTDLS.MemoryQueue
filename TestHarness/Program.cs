@@ -4,7 +4,7 @@ namespace TestHarness
 {
     internal class Program
     {
-        internal class MyMessage : INmqMessage
+        internal class MyMessage : IMqMessage
         {
             public string Text { get; set; }
 
@@ -14,7 +14,7 @@ namespace TestHarness
             }
         }
 
-        internal class MyQuery : INmqQuery
+        internal class MyQuery : IMqQuery
         {
             public string Message { get; set; }
 
@@ -24,7 +24,7 @@ namespace TestHarness
             }
         }
 
-        internal class MyQueryReply : INmqQueryReply
+        internal class MyQueryReply : IMqQueryReply
         {
             public string Message { get; set; }
 
@@ -34,22 +34,22 @@ namespace TestHarness
             }
         }
 
-        static NmqServer PropupServer()
+        static MqServer PropupServer()
         {
-            var server = new NmqServer();
+            var server = new MqServer();
             //server.CreateQueue(new NmqConfiguration("MyFirstQueue"));
             server.Start(45784);
 
             return server;
         }
 
-        static NmqClient PropupClient()
+        static MqClient PropupClient()
         {
             //Start a client and connect to the server.
-            var client = new NmqClient();
+            var client = new MqClient();
 
             //Add a message receipt handler.
-            client.OnMessageReceived += (NmqClient client, INmqMessage message) =>
+            client.OnMessageReceived += (MqClient client, IMqMessage message) =>
             {
                 if (message is MyMessage myMessage)
                 {
@@ -58,7 +58,7 @@ namespace TestHarness
             };
 
             //Add a query receipt handler.
-            client.OnQueryReceived += (NmqClient client, INmqQuery query) =>
+            client.OnQueryReceived += (MqClient client, IMqQuery query) =>
             {
                 //Handle a query of type MyQuery. Return with a type MyQueryReply.
                 if (query is MyQuery myQuery)
@@ -71,7 +71,7 @@ namespace TestHarness
 
 
             client.Connect("localhost", 45784); //Connect to the queue server.
-            client.CreateQueue(new NmqQueueConfiguration("MyFirstQueue")); //Create a queue.
+            client.CreateQueue(new MqQueueConfiguration("MyFirstQueue")); //Create a queue.
             client.Subscribe("MyFirstQueue"); //Subscribe to the queue.
 
             //Enqueue a one way message to be distributed to all subscribers.
