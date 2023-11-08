@@ -1,19 +1,22 @@
 ﻿using NTDLS.StreamFraming.Payloads;
 
-namespace NTDLS.MemoryQueue.Payloads.InternalCommunication
+namespace NTDLS.MemoryQueue.Payloads.ClientBound
 {
-    internal class NmqBroadcastQueryReply : IFrameNotification
+    /// <summary>
+    /// This is a query reply that is sent from the server to a client when the queues are being processed.
+    /// </summary>
+    internal class NmqClientBoundQueryReply : IFrameNotification
     {
         public string QueueName { get; set; } = string.Empty;
         public Guid QueryId { get; set; }
         public Guid OriginationId { get; set; }
         public string? Payload { get; set; }
 
-        public NmqBroadcastQueryReply()
+        public NmqClientBoundQueryReply()
         {
         }
 
-        public NmqBroadcastQueryReply(string queueName, Guid originationId, Guid queryId, string payload)
+        public NmqClientBoundQueryReply(string queueName, Guid originationId, Guid queryId, string payload)
         {
             QueueName = queueName;
             QueryId = queryId;

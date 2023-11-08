@@ -1,6 +1,6 @@
 ﻿using NTDLS.MemoryQueue.Engine;
 using NTDLS.MemoryQueue.Payloads;
-using NTDLS.MemoryQueue.Payloads.InternalCommunication;
+using NTDLS.MemoryQueue.Payloads.ServerBound;
 using NTDLS.Semaphore;
 using NTDLS.StreamFraming.Payloads;
 using System.Net;
@@ -193,7 +193,7 @@ namespace NTDLS.ReliableMessaging
             {
                 Unsubscribe(connectionId, unsubscribe.QueueName);
             }
-            else if (payload is NmqEnqueue enqueue)
+            else if (payload is NmqEnqueueMessage enqueue)
             {
                 Equeue(enqueue.QueueName, enqueue.Payload);
             }

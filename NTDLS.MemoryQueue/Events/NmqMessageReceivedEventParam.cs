@@ -1,7 +1,7 @@
-﻿namespace NTDLS.MemoryQueue.Payloads
+﻿namespace NTDLS.MemoryQueue.Events
 {
     /// <summary>
-    /// Used to send a message to the client notification event.
+    /// The parameter for the client OnMessageReceived event.
     /// </summary>
     public class NmqMessageReceivedEventParam
     {

@@ -1,7 +1,7 @@
-﻿namespace NTDLS.MemoryQueue.Payloads
+﻿namespace NTDLS.MemoryQueue.Events
 {
     /// <summary>
-    /// Used to send a query to the client query notification event.
+    /// The parameter for the client OnQueryReceived event.
     /// </summary>
     public class NmqQueryReceivedEventParam
     {

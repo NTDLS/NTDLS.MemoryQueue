@@ -1,7 +1,10 @@
 ﻿using NTDLS.StreamFraming.Payloads;
 
-namespace NTDLS.MemoryQueue.Payloads.InternalCommunication
+namespace NTDLS.MemoryQueue.Payloads.ServerBound
 {
+    /// <summary>
+    /// This is a create queue request that is sent from the client to the server.
+    /// </summary>
     internal class NmqCreateQueue : IFrameNotification
     {
         public NmqQueueConfiguration Configuration { get; set; }

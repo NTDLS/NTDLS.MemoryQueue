@@ -1,6 +1,8 @@
 ﻿using NTDLS.MemoryQueue.Engine;
+using NTDLS.MemoryQueue.Events;
 using NTDLS.MemoryQueue.Payloads;
-using NTDLS.MemoryQueue.Payloads.InternalCommunication;
+using NTDLS.MemoryQueue.Payloads.ClientBound;
+using NTDLS.MemoryQueue.Payloads.ServerBound;
 using NTDLS.Semaphore;
 using NTDLS.StreamFraming.Payloads;
 using System.Net;
@@ -84,10 +86,10 @@ namespace NTDLS.ReliableMessaging
         public void Enqueue(string queueName, string payload)
         {
             Utility.EnsureNotNull(_activeConnection);
-            _activeConnection.SendNotification(new NmqEnqueue(queueName, payload));
+            _activeConnection.SendNotification(new NmqEnqueueMessage(queueName, payload));
         }
 
-        private void EnqueueQueryReply(NmqBroadcastQuery query, string payload)
+        private void EnqueueQueryReply(NmqClientBoundQuery query, string payload)
         {
             Utility.EnsureNotNull(_activeConnection);
             _activeConnection.SendNotification(new NmqEnqueueQueryReply(query.QueueName, query.QueryId, payload));
@@ -210,7 +212,7 @@ namespace NTDLS.ReliableMessaging
 
         void IMessageHub.InvokeOnNotificationReceived(Guid connectionId, IFrameNotification payload)
         {
-            if (payload is NmqBroadcastMessage broadcastMessage)
+            if (payload is NmqClientBoundMessage broadcastMessage)
             {
                 if (OnMessageReceived == null)
                 {
@@ -224,7 +226,7 @@ namespace NTDLS.ReliableMessaging
 
                 OnMessageReceived.Invoke(this, param);
             }
-            else if (payload is NmqBroadcastQuery broadcastQuery)
+            else if (payload is NmqClientBoundQuery broadcastQuery)
             {
                 if (OnQueryReceived == null)
                 {
@@ -240,7 +242,7 @@ namespace NTDLS.ReliableMessaging
 
                 EnqueueQueryReply(broadcastQuery, queryResultPayload);
             }
-            else if (payload is NmqBroadcastQueryReply broadcastQueryReply)
+            else if (payload is NmqClientBoundQueryReply broadcastQueryReply)
             {
                 _queriesWaitingForReply.Use((o) =>
                 {

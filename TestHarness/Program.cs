@@ -1,4 +1,5 @@
-﻿using NTDLS.MemoryQueue.Payloads;
+﻿using NTDLS.MemoryQueue.Events;
+using NTDLS.MemoryQueue.Payloads;
 using NTDLS.ReliableMessaging;
 
 namespace TestHarness

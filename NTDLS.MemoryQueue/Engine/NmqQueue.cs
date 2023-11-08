@@ -1,5 +1,5 @@
 ﻿using NTDLS.MemoryQueue.Payloads;
-using NTDLS.MemoryQueue.Payloads.InternalCommunication;
+using NTDLS.MemoryQueue.Payloads.ClientBound;
 using NTDLS.ReliableMessaging;
 using NTDLS.Semaphore;
 
@@ -84,17 +84,17 @@ namespace NTDLS.MemoryQueue.Engine
                         {
                             if (message is NmqQueuedMessage queuedMessage)
                             {
-                                _queueManager.Server.Notify(subscriber, new NmqBroadcastMessage(queuedMessage.Payload));
+                                _queueManager.Server.Notify(subscriber, new NmqClientBoundMessage(queuedMessage.Payload));
                             }
                             else if (message is NmqQueuedQuery queuedQuery)
                             {
-                                _queueManager.Server.Notify(subscriber, new NmqBroadcastQuery(Configuration.Name, queuedQuery.QueryId, queuedQuery.Payload));
+                                _queueManager.Server.Notify(subscriber, new NmqClientBoundQuery(Configuration.Name, queuedQuery.QueryId, queuedQuery.Payload));
                             }
                             else if (message is NmqQueuedQueryReply queuedQueryReply)
                             {
                                 if (subscriber == queuedQueryReply.OriginationId) //Only send the reply to the connection that originated the query.
                                 {
-                                    _queueManager.Server.Notify(subscriber, new NmqBroadcastQueryReply(Configuration.Name, queuedQueryReply.OriginationId, queuedQueryReply.QueryId, queuedQueryReply.Payload));
+                                    _queueManager.Server.Notify(subscriber, new NmqClientBoundQueryReply(Configuration.Name, queuedQueryReply.OriginationId, queuedQueryReply.QueryId, queuedQueryReply.Payload));
                                 }
                             }
                             message.SatisfiedSubscribers.Add(subscriber);
