@@ -15,6 +15,21 @@ namespace NTDLS.MemoryQueue.Engine
 
         public Guid Id { get; private set; }
 
+        public bool IsHealthy
+        {
+            get
+            {
+                try
+                {
+                    return _tcpClient.Connected && _stream.Socket.Connected;
+                }
+                catch
+                {
+                    return false;
+                }
+            }
+        }
+
         public MqPeerConnection(IMqMemoryQueue hub, TcpClient tcpClient)
         {
             Id = Guid.NewGuid();

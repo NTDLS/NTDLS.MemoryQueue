@@ -4,6 +4,7 @@ using NTDLS.MemoryQueue.Engine.Payloads.ClientBound;
 using NTDLS.MemoryQueue.Engine.Payloads.ServerBound;
 using NTDLS.Semaphore;
 using NTDLS.StreamFraming.Payloads;
+using System.Diagnostics.CodeAnalysis;
 using System.Net;
 using System.Net.Sockets;
 
@@ -68,13 +69,28 @@ namespace NTDLS.MemoryQueue
 
         #endregion
 
+
+        private void EnsureConnected([NotNull] MqPeerConnection? activeConnection)
+        {
+            if (activeConnection == null)
+            {
+                throw new Exception("The client connection has not been established.");
+            }
+
+            if (activeConnection.IsHealthy)
+            {
+                throw new Exception("The client is not connected.");
+            }
+
+        }
+
         /// <summary>
         /// Creates a new queue with the given configuration.
         /// </summary>
         /// <param name="configuration">The configuration for the new queue.</param>
         public void CreateQueue(MqQueueConfiguration configuration)
         {
-            Utility.EnsureNotNull(_activeConnection);
+            EnsureConnected(_activeConnection);
             _activeConnection.SendNotification(new MqCreateQueue(configuration));
         }
 
@@ -84,7 +100,7 @@ namespace NTDLS.MemoryQueue
         /// <param name="queueName">The name of the queue to delete.</param>
         public void DeleteQueue(string queueName)
         {
-            Utility.EnsureNotNull(_activeConnection);
+            EnsureConnected(_activeConnection);
             _activeConnection.SendNotification(new MqDeleteQueue(queueName));
         }
 
@@ -96,7 +112,7 @@ namespace NTDLS.MemoryQueue
         /// <exception cref="Exception"></exception>
         public void EnqueueMessage(string queueName, IMqMessage message)
         {
-            Utility.EnsureNotNull(_activeConnection);
+            EnsureConnected(_activeConnection);
 
             var payloadJson = JsonConvert.SerializeObject(message);
             var payloadType = message.GetType().AssemblyQualifiedName ?? throw new Exception("The message type could not be determined.");
@@ -112,7 +128,7 @@ namespace NTDLS.MemoryQueue
         /// <param name="replyType">The type that the reply payload can be deserialized to.</param>
         private void EnqueueQueryReply(MqClientBoundQuery query, string payloadJson, string payloadType, string replyType)
         {
-            Utility.EnsureNotNull(_activeConnection);
+            EnsureConnected(_activeConnection);
             _activeConnection.SendNotification(new MqEnqueueQueryReply(query.QueueName, query.QueryId, payloadJson, payloadType, replyType));
         }
 
@@ -127,7 +143,7 @@ namespace NTDLS.MemoryQueue
         /// <exception cref="Exception"></exception>
         public async Task<T?> EnqueueQuery<T>(string queueName, IMqQuery query, int secondsTimeout = 30) where T : IMqQueryReply
         {
-            Utility.EnsureNotNull(_activeConnection);
+            EnsureConnected(_activeConnection);
 
             var waitingQuery = new MqQueryWaitingForReply();
 
@@ -160,7 +176,7 @@ namespace NTDLS.MemoryQueue
         /// <param name="queueName"></param>
         public void Subscribe(string queueName)
         {
-            Utility.EnsureNotNull(_activeConnection);
+            EnsureConnected(_activeConnection);
             _activeConnection.SendNotification(new MqSubscribe(queueName));
         }
 
@@ -170,7 +186,7 @@ namespace NTDLS.MemoryQueue
         /// <param name="queueName"></param>
         public void Unsubscribe(string queueName)
         {
-            Utility.EnsureNotNull(_activeConnection);
+            EnsureConnected(_activeConnection);
             _activeConnection.SendNotification(new MqUnsubscribe(queueName));
         }
 
