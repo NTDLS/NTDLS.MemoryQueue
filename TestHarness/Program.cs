@@ -34,14 +34,6 @@ namespace TestHarness
             }
         }
 
-        static MqServer PropupServer()
-        {
-            var server = new MqServer();
-            //server.CreateQueue(new NmqConfiguration("MyFirstQueue"));
-            server.Start(45784);
-
-            return server;
-        }
 
         static MqClient PropupClient()
         {
@@ -87,19 +79,20 @@ namespace TestHarness
                 }
             });
 
-
             return client;
         }
 
         static void Main()
         {
-            var server = PropupServer();
+            var server = new MqServer();
+            server.Start(45784);
+
             var client = PropupClient();
 
             Console.WriteLine("Press [enter] to shutdown.");
             Console.ReadLine();
 
-            //CLeanup.
+            //Cleanup.
             client.Disconnect();
             server.Shutdown();
         }

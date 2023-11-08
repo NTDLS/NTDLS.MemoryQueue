@@ -4,23 +4,24 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <TargetFrameworks>net6.0;net7.0</TargetFrameworks>
-    <GeneratePackageOnBuild>False</GeneratePackageOnBuild>
-    <Title>NTDLS.MemQueue</Title>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+    <Title>NTDLS.MemoryQueue</Title>
     <Copyright>Copyright © 2023 NetworkDLS</Copyright>
     <Description>In memory non-persistent message queue with notifications/messages, query/reply support and several message boradcast schemes. Intended for inter-process-communication, queuing, load-balancing and buffering over TCP/IP.</Description>
-    <PackageProjectUrl>https://github.com/NTDLS/NTDLS.MemQueue</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/NTDLS/NTDLS.MemQueue</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/NTDLS/NTDLS.MemoryQueue</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/NTDLS/NTDLS.MemoryQueue</RepositoryUrl>
     <PackageTags>ipc;message-queue;inter-process-communication;tcp-ip;message-broker;mq;</PackageTags>
     <PackageReleaseNotes>
-      Author revision.
+      Complete rewrite from the former lower-level socket rendition known as NTDLS.MemQueue.
     </PackageReleaseNotes>
     <RepositoryType>git</RepositoryType>
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
     <Authors>NetworkDLS</Authors>
     <Company>NetworkDLS</Company>
-    <AssemblyVersion>2.1.1</AssemblyVersion>
-    <FileVersion>2.1.1</FileVersion>
-    <VersionPrefix>2.1.1</VersionPrefix>
+    <AssemblyVersion>1.0.0</AssemblyVersion>
+    <FileVersion>1.0.0</FileVersion>
+    <VersionPrefix>1.0.0</VersionPrefix>
     <version></version>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageIcon>Logo.png</PackageIcon>

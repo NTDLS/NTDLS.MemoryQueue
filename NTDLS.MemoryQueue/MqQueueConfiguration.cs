@@ -2,6 +2,9 @@
 
 namespace NTDLS.MemoryQueue
 {
+    /// <summary>
+    /// Defines a queue configuration.
+    /// </summary>
     public class MqQueueConfiguration : IFrameNotification
     {
         /// <summary>
@@ -19,6 +22,10 @@ namespace NTDLS.MemoryQueue
         /// </summary>
         public int MaxAgeInSeconds { get; set; } = 0;
 
+        /// <summary>
+        /// Constructs a deault queue configuration.
+        /// </summary>
+        /// <param name="name"></param>
         public MqQueueConfiguration(string name)
         {
             Name = name;

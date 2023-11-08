@@ -51,8 +51,7 @@ namespace NTDLS.MemoryQueue
         /// Event fired when a message is received from a client.
         /// </summary>
         /// <param name="client">The instance of the client that is calling the event.</param>
-        /// <param name="connectionId">The id of the client which send the message.</param>
-        /// <param name="payload"></param>
+        /// <param name="message">The message which has been received.</param>
         public delegate void MessageReceivedEvent(MqClient client, IMqMessage message);
 
         /// <summary>
@@ -63,8 +62,7 @@ namespace NTDLS.MemoryQueue
         /// Event fired when a query is received from a client.
         /// </summary>
         /// <param name="client">The instance of the client that is calling the event.</param>
-        /// <param name="connectionId">The id of the client which send the query.</param>
-        /// <param name="payload"></param>
+        /// <param name="query">The query which has been received.</param>
         /// <returns></returns>
         public delegate IMqQueryReply QueryReceivedEvent(MqClient client, IMqQuery query);
 
@@ -83,7 +81,7 @@ namespace NTDLS.MemoryQueue
         /// <summary>
         /// Shuts down and deletes an existing queue.
         /// </summary>
-        /// <param name="queueName"></param>
+        /// <param name="queueName">The name of the queue to delete.</param>
         public void DeleteQueue(string queueName)
         {
             Utility.EnsureNotNull(_activeConnection);
@@ -94,7 +92,7 @@ namespace NTDLS.MemoryQueue
         /// Enqueues a one-way message for distirbution to all subscribers.
         /// </summary>
         /// <param name="queueName">The name of the queue to add the message to.</param>
-        /// <param name="message">The message object.</param>
+        /// <param name="message">The message to dispatch to the server for distribution.</param>
         /// <exception cref="Exception"></exception>
         public void EnqueueMessage(string queueName, IMqMessage message)
         {
@@ -123,7 +121,7 @@ namespace NTDLS.MemoryQueue
         /// </summary>
         /// <typeparam name="T">The expected reply type.</typeparam>
         /// <param name="queueName">The name of the queue to send the query to.</param>
-        /// <param name="query">The query payload object.</param>
+        /// <param name="query">The query to dispatch to the server for distribution.</param>
         /// <param name="secondsTimeout">The number of seconds to wait for a reply before egiving up.</param>
         /// <returns></returns>
         /// <exception cref="Exception"></exception>

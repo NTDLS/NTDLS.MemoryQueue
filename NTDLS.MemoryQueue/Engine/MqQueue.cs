@@ -135,7 +135,29 @@ namespace NTDLS.MemoryQueue.Engine
                     continue;
                 }
 
-                //Distribute the message.
+                //If this message is a query-reply, then only send the reply to the connection that originated the query.
+                if (message is MqQueuedQueryReply queuedQueryReply)
+                {
+                    try
+                    {
+                        if (message.IsDistributionComplete(queuedQueryReply.OriginationId) == false)
+                        {
+                            _queueCollectionManager.Server.Notify(queuedQueryReply.OriginationId,
+                                new MqClientBoundQueryReply(Configuration.Name, queuedQueryReply.OriginationId,
+                                    queuedQueryReply.QueryId, queuedQueryReply.PayloadJson, queuedQueryReply.PayloadType, queuedQueryReply.ReplyType));
+
+                            message.RecordSuccessfulDistribution(queuedQueryReply.OriginationId);
+                        }
+                    }
+                    catch
+                    {
+                        message.RecordUnsuccessfulDistribution(queuedQueryReply.OriginationId);
+                        Thread.Sleep(1);
+                    }
+                    continue;
+                }
+
+                //Distribute the message to all subscribers.
                 foreach (var subscriber in subscribers)
                 {
                     try
@@ -151,15 +173,6 @@ namespace NTDLS.MemoryQueue.Engine
                                 _queueCollectionManager.Server.Notify(subscriber, new MqClientBoundQuery(Configuration.Name,
                                     queuedQuery.QueryId, queuedQuery.PayloadJson, queuedQuery.PayloadType, queuedQuery.ReplyType));
                             }
-                            else if (message is MqQueuedQueryReply queuedQueryReply)
-                            {
-                                if (subscriber == queuedQueryReply.OriginationId) //Only send the reply to the connection that originated the query.
-                                {
-                                    _queueCollectionManager.Server.Notify(subscriber,
-                                        new MqClientBoundQueryReply(Configuration.Name, queuedQueryReply.OriginationId,
-                                            queuedQueryReply.QueryId, queuedQueryReply.PayloadJson, queuedQueryReply.PayloadType, queuedQueryReply.ReplyType));
-                                }
-                            }
 
                             message.RecordSuccessfulDistribution(subscriber);
                         }
@@ -167,6 +180,7 @@ namespace NTDLS.MemoryQueue.Engine
                     catch
                     {
                         message.RecordUnsuccessfulDistribution(subscriber);
+                        Thread.Sleep(1);
                     }
                 }
 

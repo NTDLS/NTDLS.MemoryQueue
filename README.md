@@ -1,74 +1,114 @@
-# NTDLS.MemQueue
+# NTDLS.MemoryQueue
 
-📦 Be sure to check out the NuGet pacakge: https://www.nuget.org/packages/NTDLS.MemQueue
+📦 Be sure to check out the NuGet pacakge: https://www.nuget.org/packages/NTDLS.MemoryQueue
 
-In memory non-persistent message queue with notifications/messages, query/reply support and several message broadcast schemes. Intended for inter-process-communication, queuing, load-balancing and buffering over TCP/IP.
+In memory non-persistent message queue with notifications/messages, query/reply
+    support and several message broadcast schemes. Intended for inter-process-communication,
+    queuing, load-balancing and buffering over TCP/IP.
+
 
 >**Running the server:**
 >
 >Running the server is literally two lines of code and can be run in the same process as the client.
->The server does not have to be dedicated either, it can eimply be one of the process that is involved in inner-process-communication.
+>The server does not have to be dedicated either, it can be one of the process that is involved in inner-process-communication.
 ```csharp
-using MemQueue;
-
 internal class Program
 {
+    static MqServer _server = new MqServer();
+
     static void Main()
     {
-        var server = new NMQServer()
-        {
-            //There are lots of options if you want to get fancy.
-        };
+        _server.Start(45784);
 
-        server.Start(); //Start the server on the default port.
+        Console.WriteLine("Press [enter] to shutdown.");
+        Console.ReadLine();
+
+        server.Shutdown();
     }
 }
 ```
 
 
->**Enqueuing a notification. A message type which does not expect a reply.**
+>**Enqueuing a message which does not expect a reply.**
 >
->Enqueuing a notification (as we call them) is a one way message that is broadcast to all connected peer that have
->subscribed to the queue.
+>Enqueuing a one-way message that is broadcast to all connected peers that have subscribed to the queue.
 ```csharp
-using MemQueue;
-using System;
-
 internal class Program
 {
+    internal class MyMessage : IMqMessage
+    {
+        public string Text { get; set; }
+
+        public MyMessage(string text)
+        {
+            Text = text;
+        }
+    }
+
     static void Main()
     {
-        var client = new NMQClient();
+        //Start a client and connect to the server.
+        var client = new MqClient();
 
-        client.Connect("localhost");
+        //Enqueue a one-way message to be distributed to all subscribers.
+        client.EnqueueMessage("MyFirstQueue", new MyMessage("This is a message"));
 
-        var message = new NMQNotification("TestQueue", "TestLabel", $"This is a message sent at {DateTime.Now:u}!");
-        client.Enqueue(message);
+        Console.WriteLine("Press [enter] to shutdown.");
+        Console.ReadLine();
+
+        client.Disconnect();
     }
 }
 ```
+
 
 >**Receiving a notification message:**
 >
->Receiving a notification is easy. If you are subscribed to the queue, you will receive the message. Further messages will be held until the event method returns.
+>Receiving a notification is easy. If you are subscribed to the queue, you will receive the message.
+>Further messages will be held until the event method returns.
 ```csharp
-using MemQueue;
-using System;
-
 internal class Program
 {
-    static void Main()
+    internal class MyMessage : IMqMessage
     {
-        var client = new NMQClient();
+        public string Text { get; set; }
 
-        client.OnNotificationReceived += Client_OnNotificationReceived; //Setup the event handler
-        client.Connect("localhost"); //Connect to the server on the default port.
-        client.Subscribe("TestQueue"); //We have to subscribe to a queue, otherwise we wont receive anything.
+        public MyMessage(string text)
+        {
+            Text = text;
+        }
     }
 
-    private static void Client_OnNotificationReceived(NMQClient sender, NMQNotification notification)
+    static void Main()
     {
-        Console.WriteLine($"Message received: {notification.Message}");
+        var client = new MqClient();
+
+        //Connect to the queue server.
+        client.Connect("localhost", 45784);
+
+        //Wire up the OnMessageReceived event.
+        client.OnMessageReceived += Client_OnMessageReceived;
+
+        //Create a queue, its ok its it already exists.
+        client.CreateQueue(new MqQueueConfiguration("MyFirstQueue"));
+
+        //Subscribe to the queue.
+        client.Subscribe("MyFirstQueue");
+
+        Console.WriteLine("Press [enter] to shutdown.");
+        Console.ReadLine();
+
+        client.Disconnect();
+    }
+
+    private static void Client_OnMessageReceived(MqClient client, IMqMessage message)
+    {
+        //We received a message. There are numerous ways to handle these, but here
+        //  we are going to pattern matching to determine what message was received.
+        if (message is MyMessage myMessage)
+        {
+            Console.WriteLine($"Client received message from server: {myMessage.Text}");
+        }
     }
 }
 ```
@@ -76,32 +116,62 @@ internal class Program
 
 >**Enqueuing a query, a message type that does expect a reply:**
 >
->You can also enque a query. The query will be received by a connected peer that is subscribed to the queue,
->respond to the query and you will receive the reply in code.
+>You can also enque a query. The query will be received by all subscribed clients and any one of them can respond.
+> The async task will completed once a client receives and responds to the query.
+> Note that only one clients reply will be received. All other replies are discarded.
 ```csharp
-using MemQueue;
-using System;
-using System.Threading.Tasks;
-
 internal class Program
 {
+    internal class MyQuery : IMqQuery
+    {
+        public string Message { get; set; }
+
+        public MyQuery(string message)
+        {
+            Message = message;
+        }
+    }
+
+    internal class MyQueryReply : IMqQueryReply
+    {
+        public string Message { get; set; }
+
+        public MyQueryReply(string message)
+        {
+            Message = message;
+        }
+    }
+
     static void Main()
     {
-        var client = new NMQClient();
+        var client = new MqClient();
 
-        client.Connect("localhost"); //Connect to the server on the default port.
-        client.Subscribe("TestQueue"); //We have to subscribe to a queue, otherwise we wont receive anything.
+        //Connect to the queue server.
+        client.Connect("localhost", 45784);
 
-        var query = new NMQQuery("TestQueue", "Ping");
+        //Create a queue, its ok its it already exists.
+        client.CreateQueue(new MqQueueConfiguration("MyFirstQueue"));
 
-        //Enqueue a query and wait for the reply.
-        client.QueryAsync(query).ContinueWith((t) =>
+        //Subscribing to the queue is commented out to demonstrate that a client does not
+        //  have to be subscribed to a queue to receive a reply from a query sent to that queue.
+        //client.Subscribe("MyFirstQueue");
+
+        //Enqueue a query that is to be distributed to all subscribers. The first one to reply wins.
+        client.EnqueueQuery<MyQueryReply>("MyFirstQueue", new MyQuery("Ping!")).ContinueWith((o) =>
         {
-            if (t.Status == TaskStatus.RanToCompletion && t.Result != null)
+            //We received a reply to the query. There are numerous ways to handle these,
+            //  but here we are going to pattern matching to determine what message was received.
+            if (o.IsCompletedSuccessfully && o.Result != null)
             {
-                Console.WriteLine($"Received message: {t.Result.Message}.");
+                //We received a reply!
+                Console.WriteLine($"Query Reply: {o.Result.Message}");
             }
         });
+
+        Console.WriteLine("Press [enter] to shutdown.");
+        Console.ReadLine();
+
+        client.Disconnect();
     }
 }
 ```
@@ -111,30 +181,42 @@ internal class Program
 >
 >Receiving a query and responding to it is easy. The server handles all the routing.
 ```csharp
-using MemQueue;
-using System;
 
 internal class Program
 {
     static void Main()
     {
-        var client = new NMQClient();
+        var client = new MqClient();
 
-        client.OnQueryReceived += Client_OnQueryReceived; //Setup the event handler.
-        client.Connect("localhost"); //Connect to the server on the default port.
-        client.Subscribe("TestQueue"); //We have to subscribe to a queue, otherwise we wont receive anything.
+        //Connect to the queue server.
+        client.Connect("localhost", 45784);
+
+        //Wire up the OnQueryReceived event.
+        client.OnQueryReceived += Client_OnQueryReceived;
+
+        //Create a queue, its ok its it already exists.
+        client.CreateQueue(new MqQueueConfiguration("MyFirstQueue"));
+
+        //Subscribe to the queue.
+        client.Subscribe("MyFirstQueue");
+
+        Console.WriteLine("Press [enter] to shutdown.");
+        Console.ReadLine();
+
+        client.Disconnect();
     }
 
-    private static NMQQueryReplyResult Client_OnQueryReceived(NMQClient sender, NMQQuery query)
+    private static IMqQueryReply Client_OnQueryReceived(MqClient client, IMqQuery query)
     {
-        if (query.Message == "Ping") //We receive a query with the message "Ping", reply with "Pong".
+        //We received a query. There are numerous ways to handle these, but here we are
+        //  going to pattern matching to determine what query was received.
+        if (query is MyQuery myQuery)
         {
-            return sender.Reply(query, new NMQReply("Pong"));
+            //The query of type MyQuery expects a reply of type MyQueryReply.
+            return new MyQueryReply("This is my reply");
         }
-        else
-        {
-            throw new NotImplementedException();
-        }
+
+        throw new Exception("The query was unhandled.");
     }
 }
 ```

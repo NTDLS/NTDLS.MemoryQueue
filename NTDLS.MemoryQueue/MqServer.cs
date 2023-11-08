@@ -45,9 +45,17 @@ namespace NTDLS.MemoryQueue
 
         #endregion
 
-        public void CreateQueue(MqQueueConfiguration config)
-            => _qeueManager.Use((o) => o.Create(config));
+        /// <summary>
+        /// Creates a new queue with the given configuration.
+        /// </summary>
+        /// <param name="configuration">The configuration for the new queue.</param>
+        public void CreateQueue(MqQueueConfiguration configuration)
+            => _qeueManager.Use((o) => o.Create(configuration));
 
+        /// <summary>
+        /// Shuts down and deletes an existing queue.
+        /// </summary>
+        /// <param name="queueName">The name of the queue to delete.</param>
         public void DeleteQueue(string queueName)
             => _qeueManager.Use((o) => o.Delete(queueName));
 
