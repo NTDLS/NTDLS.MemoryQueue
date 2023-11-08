@@ -12,3 +12,15 @@ TestHarness/bin/
 NTDLS.MemoryQueue/bin/
 
 NTDLS.MemoryQueue/obj/
+
+TestApps/Chat/ChatClient/bin/
+
+TestApps/Chat/ChatClient/obj/
+
+TestApps/Chat/ChatLibrary/bin/
+
+TestApps/Chat/ChatLibrary/obj/
+
+TestApps/Chat/ChatServer/bin/
+
+TestApps/Chat/ChatServer/obj/
