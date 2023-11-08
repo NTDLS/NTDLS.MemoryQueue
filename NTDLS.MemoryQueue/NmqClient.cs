@@ -95,23 +95,28 @@ namespace NTDLS.ReliableMessaging
             _activeConnection.SendNotification(new NmqEnqueueQueryReply(query.QueueName, query.QueryId, payload));
         }
 
-        public async Task<string?> Query(string queueName, string payload)
+        public async Task<string?> Query(string queueName, string payload, int secondsTimeout = 30)
         {
             Utility.EnsureNotNull(_activeConnection);
 
             var waitingQuery = new QueryWaitingForReply();
 
-            _queriesWaitingForReply.Use((o) =>
-            {
-                o.Add(waitingQuery.QueryId, waitingQuery);
-            });
+            _queriesWaitingForReply.Use((o)
+                => o.Add(waitingQuery.QueryId, waitingQuery));
 
             _activeConnection.SendNotification(new NmqEnqueueQuery(queueName, waitingQuery.QueryId, payload));
 
             return await Task.Run(() =>
             {
-                waitingQuery.Waiter.WaitOne();
-                return waitingQuery.Payload;
+                if (waitingQuery.Waiter.WaitOne(secondsTimeout * 1000))
+                {
+                    return waitingQuery.Payload;
+                }
+
+                _queriesWaitingForReply.Use((o)
+                    => o.Remove(waitingQuery.QueryId));
+
+                throw new Exception("Query timeout expired.");
             });
         }
 
