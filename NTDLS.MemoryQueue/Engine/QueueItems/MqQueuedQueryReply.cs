@@ -20,8 +20,8 @@
         /// </summary>
         public HashSet<Guid> SatisfiedSubscribers { get; set; } = new();
 
-        public MqQueuedQueryReply(Guid originationId, Guid queryId, string payloadJson, string payloadType, string replyType)
-            : base(payloadJson, payloadType)
+        public MqQueuedQueryReply(MqQueue queue, Guid originationId, Guid queryId, string payloadJson, string payloadType, string replyType)
+            : base(queue, payloadJson, payloadType)
 
         {
             OriginationId = originationId;

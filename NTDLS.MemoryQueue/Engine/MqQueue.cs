@@ -68,7 +68,7 @@ namespace NTDLS.MemoryQueue.Engine
         /// <param name="payloadJson">The json of the object which is the subject of the message.</param>
         /// <param name="payloadType">The original type of the payload.</param>
         public void AddMessage(string payloadJson, string payloadType)
-            => Messages.Use((o) => o.Add(new MqQueuedMessage(payloadJson, payloadType)));
+            => Messages.Use((o) => o.Add(new MqQueuedMessage(this, payloadJson, payloadType)));
 
         /// <summary>
         /// Adds a single query to the queue.
@@ -79,7 +79,7 @@ namespace NTDLS.MemoryQueue.Engine
         /// <param name="payloadType">The original type of the payload.</param>
         /// <param name="replyType">The type of the reply object. The json should be deserilizable to this type.</param>
         public void AddQuery(Guid originationId, Guid queryId, string payloadJson, string payloadType, string replyType)
-            => Messages.Use((o) => o.Add(new MqQueuedQuery(originationId, queryId, payloadJson, payloadType, replyType)));
+            => Messages.Use((o) => o.Add(new MqQueuedQuery(this, originationId, queryId, payloadJson, payloadType, replyType)));
 
         /// <summary>
         /// Adds a single query-reply to the queue.
@@ -90,7 +90,7 @@ namespace NTDLS.MemoryQueue.Engine
         /// <param name="payloadType">The original type of the payload.</param>
         /// <param name="replyType">The type of the reply object. The json should be deserilizable to this type.</param>
         public void AddQueryReply(Guid originationId, Guid queryId, string payloadJson, string payloadType, string replyType)
-            => Messages.Use((o) => o.Add(new MqQueuedQueryReply(originationId, queryId, payloadJson, payloadType, replyType)));
+            => Messages.Use((o) => o.Add(new MqQueuedQueryReply(this, originationId, queryId, payloadJson, payloadType, replyType)));
 
         /// <summary>
         /// Subscribes a given connection to the queue.
@@ -170,7 +170,7 @@ namespace NTDLS.MemoryQueue.Engine
                     }
                 }
 
-                if (message.IsDistributionComplete(subscribers))
+                if (message.IsDistributionComplete(message, subscribers))
                 {
                     //When distribution is successful to all subscribers, remove the message from the queue.
                     Messages.Use((o) => o.RemoveAt(0));

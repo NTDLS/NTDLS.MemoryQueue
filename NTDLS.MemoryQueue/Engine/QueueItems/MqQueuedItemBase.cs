@@ -10,9 +10,16 @@ namespace NTDLS.MemoryQueue.Engine.QueueItems
         public DateTime CreatedDate { get; private set; } = DateTime.UtcNow;
         public string PayloadJson { get; private set; }
         public string PayloadType { get; private set; }
+        public double AgeInSeconds => (DateTime.UtcNow - CreatedDate).TotalSeconds;
 
-        public MqQueuedItemBase(string payloadJson, string payloadType)
+        /// <summary>
+        /// The queue that ownes this item.
+        /// </summary>
+        public MqQueue Queue { get; private set; }
+
+        public MqQueuedItemBase(MqQueue queue, string payloadJson, string payloadType)
         {
+            Queue = queue;
             PayloadJson = payloadJson;
             PayloadType = payloadType;
         }
@@ -62,14 +69,20 @@ namespace NTDLS.MemoryQueue.Engine.QueueItems
             });
         }
 
-        //int maxRetries = 10;
-
-        public bool IsDistributionComplete(HashSet<Guid> subscribers)
+        public bool IsDistributionComplete(IMqQueuedItem item, HashSet<Guid> subscribers)
         {
+            if (Queue.Configuration.MaxAgeInSeconds > 0 && item.AgeInSeconds >= Queue.Configuration.MaxAgeInSeconds)
+            {
+                return true; //Expired.
+            }
+
             return _distributionMetrics.Use((o) =>
             {
+                //Create a list of all of the successful, expired or exausted queue distributions.
                 var completeDistributions =
-                    o.Where(o => o.Success == true || o.DistributionAttempts >= maxRetries).Select(o => o.ConnectionId).ToHashSet();
+                    o.Where(o => o.Success == true //Successful
+                        || o.DistributionAttempts >= Queue.Configuration.MaxDistributionAttempts //exausted
+                        ).Select(o => o.ConnectionId).ToHashSet();
 
                 return !subscribers.Except(completeDistributions).Any();
             });
