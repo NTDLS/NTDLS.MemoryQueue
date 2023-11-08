@@ -52,24 +52,24 @@ namespace NTDLS.MemoryQueue.Engine
             queue.AddMessage(payload);
         }
 
-        public void EqueueQuery(Guid originationId, string queueName, Guid queryId, string payload)
+        public void EqueueQuery(Guid originationId, string queueName, Guid queryId, string payload, string payloadType, string replyType)
         {
             if (TryGet(queueName, out var queue) == false)
             {
                 throw new Exception($"The queue does not exists: {queueName}.");
             }
 
-            queue.AddQuery(originationId, queryId, payload);
+            queue.AddQuery(originationId, queryId, payload, payloadType, replyType);
         }
 
-        public void EqueueQueryReply(Guid originationId, string queueName, Guid queryId, string payload)
+        public void EqueueQueryReply(Guid originationId, string queueName, Guid queryId, string payload, string payloadType, string replyType)
         {
             if (TryGet(queueName, out var queue) == false)
             {
                 throw new Exception($"The queue does not exists: {queueName}.");
             }
 
-            queue.AddQueryReply(originationId, queryId, payload);
+            queue.AddQueryReply(originationId, queryId, payload, payloadType, replyType);
         }
 
         public void Add(NmqQueueConfiguration config)

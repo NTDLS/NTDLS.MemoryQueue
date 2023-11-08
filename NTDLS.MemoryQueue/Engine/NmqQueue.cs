@@ -39,11 +39,11 @@ namespace NTDLS.MemoryQueue.Engine
         public void AddMessage(string payload)
             => Messages.Use((o) => o.Add(new NmqQueuedMessage(payload)));
 
-        public void AddQuery(Guid originationId, Guid queryId, string payload)
-            => Messages.Use((o) => o.Add(new NmqQueuedQuery(originationId, queryId, payload)));
+        public void AddQuery(Guid originationId, Guid queryId, string payload, string payloadType, string replyType)
+            => Messages.Use((o) => o.Add(new NmqQueuedQuery(originationId, queryId, payload, payloadType, replyType)));
 
-        public void AddQueryReply(Guid originationId, Guid queryId, string payload)
-            => Messages.Use((o) => o.Add(new NmqQueuedQueryReply(originationId, queryId, payload)));
+        public void AddQueryReply(Guid originationId, Guid queryId, string payload, string payloadType, string replyType)
+            => Messages.Use((o) => o.Add(new NmqQueuedQueryReply(originationId, queryId, payload, payloadType, replyType)));
 
         public void Subscribe(Guid connectionId)
             => Subscribers.Add(connectionId);
@@ -88,14 +88,16 @@ namespace NTDLS.MemoryQueue.Engine
                             }
                             else if (message is NmqQueuedQuery queuedQuery)
                             {
-                                _queueManager.Server.Notify(subscriber, new NmqClientBoundQuery(Configuration.Name, queuedQuery.QueryId, queuedQuery.Payload));
+                                _queueManager.Server.Notify(subscriber, new NmqClientBoundQuery(Configuration.Name,
+                                    queuedQuery.QueryId, queuedQuery.Payload, queuedQuery.PayloadType, queuedQuery.ReplyType));
                             }
                             else if (message is NmqQueuedQueryReply queuedQueryReply)
                             {
                                 if (subscriber == queuedQueryReply.OriginationId) //Only send the reply to the connection that originated the query.
                                 {
                                     _queueManager.Server.Notify(subscriber,
-                                        new NmqClientBoundQueryReply(Configuration.Name, queuedQueryReply.OriginationId, queuedQueryReply.QueryId, queuedQueryReply.Payload));
+                                        new NmqClientBoundQueryReply(Configuration.Name, queuedQueryReply.OriginationId,
+                                            queuedQueryReply.QueryId, queuedQueryReply.Payload, queuedQueryReply.PayloadType, queuedQueryReply.ReplyType));
                                 }
                             }
                             message.SatisfiedSubscribers.Add(subscriber);

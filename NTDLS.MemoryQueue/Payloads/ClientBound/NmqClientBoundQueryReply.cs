@@ -11,13 +11,17 @@ namespace NTDLS.MemoryQueue.Payloads.ClientBound
         public Guid QueryId { get; set; }
         public Guid OriginationId { get; set; }
         public string? Payload { get; set; }
+        public string PayloadType { get; set; }
+        public string ReplyType { get; set; }
 
-        public NmqClientBoundQueryReply(string queueName, Guid originationId, Guid queryId, string payload)
+        public NmqClientBoundQueryReply(string queueName, Guid originationId, Guid queryId, string payload, string payloadType, string replyType)
         {
             QueueName = queueName;
             QueryId = queryId;
             Payload = payload;
             OriginationId = originationId;
+            PayloadType = payloadType;
+            ReplyType = replyType;
         }
     }
 }

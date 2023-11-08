@@ -51,8 +51,10 @@ namespace NTDLS.ReliableMessaging
         public void Subscribe(Guid connectionId, string queueName) => _qeueManager.Use((o) => o.Subscribe(connectionId, queueName));
         public void Unsubscribe(Guid connectionId, string queueName) => _qeueManager.Use((o) => o.Unsubscribe(connectionId, queueName));
         public void Equeue(string queueName, string payload) => _qeueManager.Use((o) => o.Equeue(queueName, payload));
-        public void EqueueQuery(Guid originationId, string queueName, Guid queryId, string payload) => _qeueManager.Use((o) => o.EqueueQuery(originationId, queueName, queryId, payload));
-        public void EqueueQueryReply(Guid originationId, string queueName, Guid queryId, string payload) => _qeueManager.Use((o) => o.EqueueQueryReply(originationId, queueName, queryId, payload));
+        public void EqueueQuery(Guid originationId, string queueName, Guid queryId, string payload, string payloadType, string replyType) =>
+            _qeueManager.Use((o) => o.EqueueQuery(originationId, queueName, queryId, payload, payloadType, replyType));
+        public void EqueueQueryReply(Guid originationId, string queueName, Guid queryId, string payload, string payloadType, string replyType)
+            => _qeueManager.Use((o) => o.EqueueQueryReply(originationId, queueName, queryId, payload, payloadType, replyType));
 
         /// <summary>
         /// Starts the message server.
@@ -199,11 +201,11 @@ namespace NTDLS.ReliableMessaging
             }
             else if (payload is NmqEnqueueQuery enqueueQuery)
             {
-                EqueueQuery(connectionId, enqueueQuery.QueueName, enqueueQuery.QueryId, enqueueQuery.Payload);
+                EqueueQuery(connectionId, enqueueQuery.QueueName, enqueueQuery.QueryId, enqueueQuery.Payload, enqueueQuery.PayloadType, enqueueQuery.ReplyType);
             }
             else if (payload is NmqEnqueueQueryReply enqueueQueryReply)
             {
-                EqueueQueryReply(connectionId, enqueueQueryReply.QueueName, enqueueQueryReply.QueryId, enqueueQueryReply.Payload);
+                EqueueQueryReply(connectionId, enqueueQueryReply.QueueName, enqueueQueryReply.QueryId, enqueueQueryReply.Payload, enqueueQueryReply.PayloadType, enqueueQueryReply.ReplyType);
             }
             else if (payload is NmqDeleteQueue deleteQueue)
             {

@@ -5,6 +5,6 @@
     /// </summary>
     public class NmqQueryReceivedEventParam
     {
-        public string? Payload { get; set; }
+        public object? Payload { get; set; }
     }
 }

@@ -6,20 +6,17 @@ namespace TestHarness
 {
     internal class Program
     {
-        /*
-        //Class used to send a notification.
-        internal class MyNotification : IFrameNotification
+        internal class MyMessage : INmqMessage
         {
-            public string Message { get; set; }
+            public string Text { get; set; }
 
-            public MyNotification(string message)
+            public MyMessage(string text)
             {
-                Message = message;
+                Text = text;
             }
         }
 
-        //Class used to send a query (which expects a response).
-        internal class MyQuery : IFrameQuery
+        internal class MyQuery : INmqQuery
         {
             public string Message { get; set; }
 
@@ -29,8 +26,7 @@ namespace TestHarness
             }
         }
 
-        //Class used to reply to a query.
-        internal class MyQueryReply : IFrameQueryReply
+        internal class MyQueryReply : INmqQueryReply
         {
             public string Message { get; set; }
 
@@ -39,7 +35,6 @@ namespace TestHarness
                 Message = message;
             }
         }
-        */
 
         static NmqServer PropupServer()
         {
@@ -60,13 +55,14 @@ namespace TestHarness
                 Console.WriteLine($"Client received message from server: {message.Payload}");
             };
 
-            client.OnQueryReceived += (NmqClient client, NmqQueryReceivedEventParam query) =>
+            client.OnQueryReceived += (NmqClient client, INmqQuery query) =>
             {
-                if (query.Payload == "Ping!")
+                if (query is MyQuery myQuery)
                 {
-                    return "Pong!";
+                    return new MyQueryReply("This is my reply");
                 }
-                return "Unhandled query.";
+
+                throw new Exception("The query was unhandled.");
             };
 
             client.Connect("localhost", 45784);
@@ -75,13 +71,14 @@ namespace TestHarness
 
             client.Enqueue("MyFirstQueue", "This is my message");
 
-            client.Query("MyFirstQueue", "Ping!").ContinueWith((o) =>
+            client.Query<MyQueryReply>("MyFirstQueue", new MyQuery("Ping!")).ContinueWith((o) =>
             {
-                if (o.IsCompletedSuccessfully)
+                if (o.IsCompletedSuccessfully && o.Result != null)
                 {
-                    Console.WriteLine($"Query Reply: {o.Result}");
+                    Console.WriteLine($"Query Reply: {o.Result.Message}");
                 }
             });
+
 
             return client;
         }
