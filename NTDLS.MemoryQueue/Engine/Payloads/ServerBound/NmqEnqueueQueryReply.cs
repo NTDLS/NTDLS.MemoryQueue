@@ -1,8 +1,8 @@
 ﻿using NTDLS.StreamFraming.Payloads;
 
-namespace NTDLS.MemoryQueue.Payloads.ServerBound
+namespace NTDLS.MemoryQueue.Engine.Payloads.ServerBound
 {
-    /// This is a enque query reply request that is sent from the client to the server.
+    /// This is a enqueue query reply request that is sent from the client to the server.
     internal class NmqEnqueueQueryReply : IFrameNotification
     {
         public string QueueName { get; set; }

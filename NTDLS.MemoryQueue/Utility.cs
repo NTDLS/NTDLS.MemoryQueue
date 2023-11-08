@@ -5,7 +5,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 
-namespace NTDLS.ReliableMessaging
+namespace NTDLS.MemoryQueue
 {
     internal static class Utility
     {

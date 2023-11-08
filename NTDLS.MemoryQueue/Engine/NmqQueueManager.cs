@@ -1,19 +1,35 @@
-﻿using NTDLS.MemoryQueue.Payloads;
-using NTDLS.ReliableMessaging;
-using System.Diagnostics.CodeAnalysis;
+﻿using System.Diagnostics.CodeAnalysis;
 
 namespace NTDLS.MemoryQueue.Engine
 {
+    /// <summary>
+    /// The collection manager for all of the queues.
+    /// </summary>
     internal class NmqQueueManager
     {
+        /// <summary>
+        /// The server that is using this queue manager.
+        /// </summary>
         public NmqServer? Server { get; private set; }
+
+        /// <summary>
+        /// The collection of queues.
+        /// </summary>
         public List<NmqQueue> Queues { get; private set; } = new();
 
+        /// <summary>
+        /// Since we are using a CriticalResource<>, we cant use a parameterized constructor so we have to set the server instance later.
+        /// </summary>
+        /// <param name="server"></param>
         public void SetServer(NmqServer server)
         {
             Server = server;
         }
 
+        /// <summary>
+        /// Shuts down all queues and the queue manager.
+        /// </summary>
+        /// <param name="waitForThreadToExit"></param>
         public void Shutdown(bool waitForThreadToExit)
         {
             foreach (var queue in Queues)
@@ -22,6 +38,12 @@ namespace NTDLS.MemoryQueue.Engine
             }
         }
 
+        /// <summary>
+        /// Subscribes the specified connection the the specified queue name.
+        /// </summary>
+        /// <param name="connectionId"></param>
+        /// <param name="queueName"></param>
+        /// <exception cref="Exception"></exception>
         public void Subscribe(Guid connectionId, string queueName)
         {
             if (TryGet(queueName, out var queue) == false)
@@ -32,6 +54,12 @@ namespace NTDLS.MemoryQueue.Engine
             queue.Subscribers.Add(connectionId);
         }
 
+        /// <summary>
+        /// Unsubscribes the specified connection the the specified queue name.
+        /// </summary>
+        /// <param name="connectionId"></param>
+        /// <param name="queueName"></param>
+        /// <exception cref="Exception"></exception>
         public void Unsubscribe(Guid connectionId, string queueName)
         {
             if (TryGet(queueName, out var queue) == false)
@@ -42,6 +70,13 @@ namespace NTDLS.MemoryQueue.Engine
             queue.Subscribers.Remove(connectionId);
         }
 
+        /// <summary>
+        /// Enqueues a message to the specified queue.
+        /// </summary>
+        /// <param name="queueName"></param>
+        /// <param name="payloadJson"></param>
+        /// <param name="payloadType"></param>
+        /// <exception cref="Exception"></exception>
         public void EqueueMessage(string queueName, string payloadJson, string payloadType)
         {
             if (TryGet(queueName, out var queue) == false)
@@ -52,6 +87,16 @@ namespace NTDLS.MemoryQueue.Engine
             queue.AddMessage(payloadJson, payloadType);
         }
 
+        /// <summary>
+        /// Enqueues a query (which expects a reply) to the specified queue.
+        /// </summary>
+        /// <param name="originationId"></param>
+        /// <param name="queueName"></param>
+        /// <param name="queryId"></param>
+        /// <param name="payloadJson"></param>
+        /// <param name="payloadType"></param>
+        /// <param name="replyType"></param>
+        /// <exception cref="Exception"></exception>
         public void EqueueQuery(Guid originationId, string queueName, Guid queryId, string payloadJson, string payloadType, string replyType)
         {
             if (TryGet(queueName, out var queue) == false)
@@ -62,6 +107,16 @@ namespace NTDLS.MemoryQueue.Engine
             queue.AddQuery(originationId, queryId, payloadJson, payloadType, replyType);
         }
 
+        /// <summary>
+        /// Enqueues a query reply to the specifed queue. This reply will be routed to the connection with the originationId.
+        /// </summary>
+        /// <param name="originationId"></param>
+        /// <param name="queueName"></param>
+        /// <param name="queryId"></param>
+        /// <param name="payloadJson"></param>
+        /// <param name="payloadType"></param>
+        /// <param name="replyType"></param>
+        /// <exception cref="Exception"></exception>
         public void EqueueQueryReply(Guid originationId, string queueName, Guid queryId, string payloadJson, string payloadType, string replyType)
         {
             if (TryGet(queueName, out var queue) == false)
@@ -72,9 +127,14 @@ namespace NTDLS.MemoryQueue.Engine
             queue.AddQueryReply(originationId, queryId, payloadJson, payloadType, replyType);
         }
 
-        public void Add(NmqQueueConfiguration config)
+        /// <summary>
+        /// Creates a new queue.
+        /// </summary>
+        /// <param name="config"></param>
+        /// <exception cref="Exception"></exception>
+        public void Create(NmqQueueConfiguration config)
         {
-            if (ContainsKey(config.Name))
+            if (Exists(config.Name))
             {
                 throw new Exception($"The queue already exists: {config.Name}.");
             }
@@ -83,7 +143,11 @@ namespace NTDLS.MemoryQueue.Engine
             Queues.Add(queue);
         }
 
-        public void Delete(Guid connectionId, string queueName)
+        /// <summary>
+        /// Deletes an existing queue.
+        /// </summary>
+        /// <param name="queueName"></param>
+        public void Delete(string queueName)
         {
             if (TryGet(queueName, out var queue))
             {
@@ -92,6 +156,12 @@ namespace NTDLS.MemoryQueue.Engine
             }
         }
 
+        /// <summary>
+        /// Attempts to get a queue by its name.
+        /// </summary>
+        /// <param name="key"></param>
+        /// <param name="outQueu"></param>
+        /// <returns></returns>
         public bool TryGet(string key, [NotNullWhen(true)] out NmqQueue? outQueu)
         {
             key = key.ToLower();
@@ -99,7 +169,12 @@ namespace NTDLS.MemoryQueue.Engine
             return outQueu != null;
         }
 
-        public bool ContainsKey(string key)
+        /// <summary>
+        /// Determines if a queue with the specified name exists.
+        /// </summary>
+        /// <param name="key"></param>
+        /// <returns></returns>
+        public bool Exists(string key)
         {
             key = key.ToLower();
             return Queues.Any(o => o.Key == key);

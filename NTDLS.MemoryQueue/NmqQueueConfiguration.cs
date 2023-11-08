@@ -1,6 +1,6 @@
 ﻿using NTDLS.StreamFraming.Payloads;
 
-namespace NTDLS.MemoryQueue.Payloads
+namespace NTDLS.MemoryQueue
 {
     public class NmqQueueConfiguration : IFrameNotification
     {

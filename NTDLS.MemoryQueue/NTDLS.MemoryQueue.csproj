@@ -50,8 +50,4 @@
     <PackageReference Include="NTDLS.StreamFraming" Version="1.0.5" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Events\" />
-  </ItemGroup>
-
 </Project>

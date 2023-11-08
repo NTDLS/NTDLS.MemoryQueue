@@ -1,5 +1,8 @@
-﻿namespace NTDLS.MemoryQueue.Engine
+﻿namespace NTDLS.MemoryQueue.Engine.QueueItems
 {
+    /// <summary>
+    /// Represents a "physical" message that is waiting in the queue.
+    /// </summary>
     internal class NmqQueuedMessage : INmqQueuedItem
     {
         public DateTime CreatedDate { get; private set; } = DateTime.UtcNow;

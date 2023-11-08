@@ -1,17 +1,16 @@
 ﻿using NTDLS.MemoryQueue.Engine;
-using NTDLS.MemoryQueue.Payloads;
-using NTDLS.MemoryQueue.Payloads.ServerBound;
+using NTDLS.MemoryQueue.Engine.Payloads.ServerBound;
 using NTDLS.Semaphore;
 using NTDLS.StreamFraming.Payloads;
 using System.Net;
 using System.Net.Sockets;
 
-namespace NTDLS.ReliableMessaging
+namespace NTDLS.MemoryQueue
 {
     /// <summary>
     /// Listens for connections from MessageClients and processes the incoming notifications/queries.
     /// </summary>
-    public class NmqServer : IMessageHub
+    public class NmqServer : INmqMemoryQueue
     {
         private TcpListener? _listener;
         private readonly CriticalResource<List<PeerConnection>> _activeConnections = new();
@@ -47,25 +46,10 @@ namespace NTDLS.ReliableMessaging
         #endregion
 
         public void CreateQueue(NmqQueueConfiguration config)
-            => _qeueManager.Use((o) => o.Add(config));
+            => _qeueManager.Use((o) => o.Create(config));
 
-        public void DeleteQueue(Guid connectionId, string queueName)
-            => _qeueManager.Use((o) => o.Delete(connectionId, queueName));
-
-        public void Subscribe(Guid connectionId, string queueName)
-            => _qeueManager.Use((o) => o.Subscribe(connectionId, queueName));
-
-        public void Unsubscribe(Guid connectionId, string queueName)
-            => _qeueManager.Use((o) => o.Unsubscribe(connectionId, queueName));
-
-        public void Equeue(string queueName, string payloadJson, string payloadType)
-            => _qeueManager.Use((o) => o.EqueueMessage(queueName, payloadJson, payloadType));
-
-        public void EqueueQuery(Guid originationId, string queueName, Guid queryId, string payloadJson, string payloadType, string replyType)
-            => _qeueManager.Use((o) => o.EqueueQuery(originationId, queueName, queryId, payloadJson, payloadType, replyType));
-
-        public void EqueueQueryReply(Guid originationId, string queueName, Guid queryId, string payloadJson, string payloadType, string replyType)
-            => _qeueManager.Use((o) => o.EqueueQueryReply(originationId, queueName, queryId, payloadJson, payloadType, replyType));
+        public void DeleteQueue(string queueName)
+            => _qeueManager.Use((o) => o.Delete(queueName));
 
         /// <summary>
         /// Starts the message server.
@@ -112,7 +96,7 @@ namespace NTDLS.ReliableMessaging
             {
                 Utility.EnsureNotNull(_listener);
 
-                Thread.CurrentThread.Name = $"ListenerThreadProc:{Thread.CurrentThread.ManagedThreadId}";
+                Thread.CurrentThread.Name = $"NmqServer:ListenerThreadProc:{Environment.CurrentManagedThreadId}";
 
                 _listener.Start();
 
@@ -152,7 +136,7 @@ namespace NTDLS.ReliableMessaging
             var connection = _activeConnections.Use((o) => o.Where(c => c.Id == connectionId).FirstOrDefault());
             if (connection == null)
             {
-                throw new Exception($"The connection with id {connectionId} was not found.");
+                throw new Exception($"The connection with id '{connectionId}' was not found.");
             }
 
             connection.SendNotification(notification);
@@ -171,18 +155,18 @@ namespace NTDLS.ReliableMessaging
             var connection = _activeConnections.Use((o) => o.Where(c => c.Id == connectionId).FirstOrDefault());
             if (connection == null)
             {
-                throw new Exception($"The connection with id {connectionId} was not found.");
+                throw new Exception($"The connection with id '{connectionId}' was not found.");
             }
 
             return await connection.SendQuery<T>(query);
         }
 
-        void IMessageHub.InvokeOnConnected(Guid connectionId)
+        void INmqMemoryQueue.InvokeOnConnected(Guid connectionId)
         {
             OnConnected?.Invoke(this, connectionId);
         }
 
-        void IMessageHub.InvokeOnDisconnected(Guid connectionId)
+        void INmqMemoryQueue.InvokeOnDisconnected(Guid connectionId)
         {
             if (_keepRunning) //Avoid a race condition with the client thread waiting on a lock on _activeConnections that is held by Server.Stop().
             {
@@ -191,36 +175,36 @@ namespace NTDLS.ReliableMessaging
             OnDisconnected?.Invoke(this, connectionId);
         }
 
-        void IMessageHub.InvokeOnNotificationReceived(Guid connectionId, IFrameNotification payload)
+        void INmqMemoryQueue.InvokeOnNotificationReceived(Guid connectionId, IFrameNotification payload)
         {
             //Intercept notifications to see if they are Client->Server commands.
             if (payload is NmqCreateQueue createQueue)
             {
                 CreateQueue(createQueue.Configuration);
             }
+            else if (payload is NmqDeleteQueue deleteQueue)
+            {
+                DeleteQueue(deleteQueue.QueueName);
+            }
             else if (payload is NmqSubscribe subscribe)
             {
-                Subscribe(connectionId, subscribe.QueueName);
+                _qeueManager.Use((o) => o.Subscribe(connectionId, subscribe.QueueName));
             }
             else if (payload is NmqUnsubscribe unsubscribe)
             {
-                Unsubscribe(connectionId, unsubscribe.QueueName);
+                _qeueManager.Use((o) => o.Unsubscribe(connectionId, unsubscribe.QueueName));
             }
             else if (payload is NmqEnqueueMessage enqueue)
             {
-                Equeue(enqueue.QueueName, enqueue.PayloadJson, enqueue.PayloadType);
+                _qeueManager.Use((o) => o.EqueueMessage(enqueue.QueueName, enqueue.PayloadJson, enqueue.PayloadType));
             }
             else if (payload is NmqEnqueueQuery enqueueQuery)
             {
-                EqueueQuery(connectionId, enqueueQuery.QueueName, enqueueQuery.QueryId, enqueueQuery.PayloadJson, enqueueQuery.PayloadType, enqueueQuery.ReplyType);
+                _qeueManager.Use((o) => o.EqueueQuery(connectionId, enqueueQuery.QueueName, enqueueQuery.QueryId, enqueueQuery.PayloadJson, enqueueQuery.PayloadType, enqueueQuery.ReplyType));
             }
             else if (payload is NmqEnqueueQueryReply enqueueQueryReply)
             {
-                EqueueQueryReply(connectionId, enqueueQueryReply.QueueName, enqueueQueryReply.QueryId, enqueueQueryReply.PayloadJson, enqueueQueryReply.PayloadType, enqueueQueryReply.ReplyType);
-            }
-            else if (payload is NmqDeleteQueue deleteQueue)
-            {
-                DeleteQueue(connectionId, deleteQueue.QueueName);
+                _qeueManager.Use((o) => o.EqueueQueryReply(connectionId, enqueueQueryReply.QueueName, enqueueQueryReply.QueryId, enqueueQueryReply.PayloadJson, enqueueQueryReply.PayloadType, enqueueQueryReply.ReplyType));
             }
             else
             {

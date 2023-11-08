@@ -1,4 +1,4 @@
-﻿namespace NTDLS.MemoryQueue.Payloads
+﻿namespace NTDLS.MemoryQueue
 {
     public interface INmqQuery
     {

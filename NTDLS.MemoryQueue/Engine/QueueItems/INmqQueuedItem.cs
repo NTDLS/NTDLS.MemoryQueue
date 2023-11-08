@@ -1,5 +1,8 @@
-﻿namespace NTDLS.MemoryQueue.Engine
+﻿namespace NTDLS.MemoryQueue.Engine.QueueItems
 {
+    /// <summary>
+    /// All items that can sit in the queue must inherit INmqQueuedItem.
+    /// </summary>
     internal interface INmqQueuedItem
     {
         public DateTime CreatedDate { get; }

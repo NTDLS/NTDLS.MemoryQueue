@@ -2,20 +2,20 @@
 using NTDLS.StreamFraming.Payloads;
 using System.Net.Sockets;
 
-namespace NTDLS.ReliableMessaging
+namespace NTDLS.MemoryQueue.Engine
 {
     internal class PeerConnection
     {
-        private readonly FrameBuffer _frameBuffer = new(4096);
+        private readonly FrameBuffer _frameBuffer = new(16 * 1024);
         private readonly TcpClient _tcpClient; //The TCP/IP connection associated with this connection.
         private readonly Thread _dataPumpThread; //The thread that receives data for this connection.
         private readonly NetworkStream _stream; //The stream for the TCP/IP connection (used for reading and writing).
-        private readonly IMessageHub _hub;
+        private readonly INmqMemoryQueue _hub;
         private bool _keepRunning;
 
         public Guid Id { get; private set; }
 
-        public PeerConnection(IMessageHub hub, TcpClient tcpClient)
+        public PeerConnection(INmqMemoryQueue hub, TcpClient tcpClient)
         {
             Id = Guid.NewGuid();
             _hub = hub;
@@ -38,7 +38,7 @@ namespace NTDLS.ReliableMessaging
 
         internal void DataPumpThreadProc()
         {
-            Thread.CurrentThread.Name = $"DataPumpThreadProc:{Thread.CurrentThread.ManagedThreadId}";
+            Thread.CurrentThread.Name = $"PeerConnection:DataPumpThreadProc:{Environment.CurrentManagedThreadId}";
 
             try
             {

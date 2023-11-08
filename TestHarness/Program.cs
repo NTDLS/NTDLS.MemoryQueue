@@ -1,5 +1,4 @@
-﻿using NTDLS.MemoryQueue.Payloads;
-using NTDLS.ReliableMessaging;
+﻿using NTDLS.MemoryQueue;
 
 namespace TestHarness
 {
@@ -49,6 +48,7 @@ namespace TestHarness
             //Start a client and connect to the server.
             var client = new NmqClient();
 
+            //Add a message receipt handler.
             client.OnMessageReceived += (NmqClient client, INmqMessage message) =>
             {
                 if (message is MyMessage myMessage)
@@ -57,8 +57,10 @@ namespace TestHarness
                 }
             };
 
+            //Add a query receipt handler.
             client.OnQueryReceived += (NmqClient client, INmqQuery query) =>
             {
+                //Handle a query of type MyQuery. Return with a type MyQueryReply.
                 if (query is MyQuery myQuery)
                 {
                     return new MyQueryReply("This is my reply");
@@ -67,16 +69,20 @@ namespace TestHarness
                 throw new Exception("The query was unhandled.");
             };
 
-            client.Connect("localhost", 45784);
-            client.CreateQueue(new NmqQueueConfiguration("MyFirstQueue"));
-            client.Subscribe("MyFirstQueue");
 
-            client.Enqueue("MyFirstQueue", new MyMessage("This is a message"));
+            client.Connect("localhost", 45784); //Connect to the queue server.
+            client.CreateQueue(new NmqQueueConfiguration("MyFirstQueue")); //Create a queue.
+            client.Subscribe("MyFirstQueue"); //Subscribe to the queue.
 
-            client.Query<MyQueryReply>("MyFirstQueue", new MyQuery("Ping!")).ContinueWith((o) =>
+            //Enqueue a one way message to be distributed to all subscribers.
+            client.EnqueueMessage("MyFirstQueue", new MyMessage("This is a message"));
+
+            //Enqueu a query that is to be distributed to all subscribers. The first one to reply wins.
+            client.EnqueueQuery<MyQueryReply>("MyFirstQueue", new MyQuery("Ping!")).ContinueWith((o) =>
             {
                 if (o.IsCompletedSuccessfully && o.Result != null)
                 {
+                    //We received a reply!
                     Console.WriteLine($"Query Reply: {o.Result.Message}");
                 }
             });
@@ -96,62 +102,6 @@ namespace TestHarness
             //CLeanup.
             client.Disconnect();
             server.Shutdown();
-
-            /*
-            //Start a server and add a "query received" and "notification received" event handler.
-            server.OnQueryReceived += Server_OnQueryReceived;
-            server.OnNotificationReceived += Server_OnNotificationReceived;
-            server.Start(45784);
-
-            //Start a client and connect to the server.
-            var client = new MessageClient();
-            client.Connect("localhost", 45784);
-
-            client.Notify(new MyNotification("This is message 001 from the client."));
-            client.Notify(new MyNotification("This is message 002 from the client."));
-            client.Notify(new MyNotification("This is message 003 from the client."));
-
-            //Send a query to the server, specify which type of reply we expect.
-            client.Query<MyQueryReply>(new MyQuery("This is the query from the client.")).ContinueWith(x =>
-            {
-                //If we recevied a reply, print it to the console.
-                if (x.IsCompletedSuccessfully && x.Result != null)
-                {
-                    Console.WriteLine($"Client received query reply: '{x.Result.Message}'");
-                }
-            });
-            */
         }
-
-
-
-        /*
-        private static void Server_OnNotificationReceived(MessageServer server, Guid connectionId, IFrameNotification payload)
-        {
-            if (payload is MyNotification notification)
-            {
-                Console.WriteLine($"Server received notification: {notification.Message}");
-            }
-            else
-            {
-                throw new NotImplementedException();
-            }
-        }
-
-        private static IFrameQueryReply Server_OnQueryReceived(MessageServer server, Guid connectionId, IFrameQuery payload)
-        {
-            if (payload is MyQuery query)
-            {
-                Console.WriteLine($"Server received query: '{query.Message}'");
-
-                //Return with a class that implements IFrameQueryReply to reply to the client.
-                return new MyQueryReply("This is the query reply from the server.");
-            }
-            else
-            {
-                throw new NotImplementedException();
-            }
-        }
-        */
     }
 }

@@ -1,8 +1,8 @@
 ﻿using NTDLS.StreamFraming.Payloads;
 
-namespace NTDLS.ReliableMessaging
+namespace NTDLS.MemoryQueue
 {
-    internal interface IMessageHub
+    internal interface INmqMemoryQueue
     {
         internal void InvokeOnConnected(Guid connectionId);
         internal void InvokeOnDisconnected(Guid connectionId);

@@ -1,30 +1,30 @@
-﻿namespace NTDLS.MemoryQueue.Engine
+﻿namespace NTDLS.MemoryQueue.Engine.QueueItems
 {
-    internal class NmqQueuedQueryReply : INmqQueuedItem
+    /// <summary>
+    /// Represents a "physical" query message that is waiting in the queue.
+    /// </summary>
+    internal class NmqQueuedQuery : INmqQueuedItem
     {
         /// <summary>
         /// The ID of the client connection that expects a response to this query.
         /// </summary>
         public Guid OriginationId { get; private set; }
-        /// <summary>
-        /// The id of the query that this reply is in response to.
-        /// </summary>
         public Guid QueryId { get; private set; }
         public DateTime CreatedDate { get; private set; } = DateTime.UtcNow;
         public string PayloadJson { get; private set; }
-        public string PayloadType { get; set; }
-        public string ReplyType { get; set; }
+        public string PayloadType { get; private set; }
+        public string ReplyType { get; private set; }
 
         /// <summary>
         /// A list of the subscribers that the message has been sent to or that have had too many retries.
         /// </summary>
-        public HashSet<Guid> SatisfiedSubscribers { get; set; } = new();
+        public HashSet<Guid> SatisfiedSubscribers { get; private set; } = new();
 
-        public NmqQueuedQueryReply(Guid originationId, Guid queryId, string payloadJson, string payloadType, string replyType)
+        public NmqQueuedQuery(Guid originationId, Guid queryId, string payloadJson, string payloadType, string replyType)
         {
             OriginationId = originationId;
-            PayloadJson = payloadJson;
             QueryId = queryId;
+            PayloadJson = payloadJson;
             PayloadType = payloadType;
             ReplyType = replyType;
         }

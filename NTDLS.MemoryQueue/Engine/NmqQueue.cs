@@ -1,25 +1,47 @@
-﻿using NTDLS.MemoryQueue.Payloads;
-using NTDLS.MemoryQueue.Payloads.ClientBound;
-using NTDLS.ReliableMessaging;
+﻿using NTDLS.MemoryQueue.Engine.Payloads.ClientBound;
+using NTDLS.MemoryQueue.Engine.QueueItems;
 using NTDLS.Semaphore;
 
 namespace NTDLS.MemoryQueue.Engine
 {
+    /// <summary>
+    /// A message queue. The queue manages its own subscribers, messages and is responsible for distribution of those messages to the respective subscribers.
+    /// </summary>
     internal class NmqQueue
     {
         private readonly Thread _distributionThread;
         private bool _keepRunning = false;
         private readonly NmqQueueManager _queueManager;
 
+        /// <summary>
+        /// The ToLowered name of the queue.
+        /// </summary>
         public string Key { get; private set; }
+
+        /// <summary>
+        /// The configuration that was used to create the queue.
+        /// </summary>
         public NmqQueueConfiguration Configuration { get; private set; }
+
+        /// <summary>
+        /// The ConnectionId of the connection that requested a subscription to this queue.
+        /// </summary>
         public HashSet<Guid> Subscribers { get; private set; } = new();
+
+        /// <summary>
+        /// The messages that are waiting in the queue.
+        /// </summary>
         public CriticalResource<List<INmqQueuedItem>> Messages { get; private set; } = new();
 
-        public NmqQueue(NmqQueueManager queueManager, NmqQueueConfiguration config)
+        /// <summary>
+        /// Creates and starts a new queue.
+        /// </summary>
+        /// <param name="queueManager">A reference to the queue manager.</param>
+        /// <param name="configuration">The configuration that is used to define the parameters of the new queue.</param>
+        public NmqQueue(NmqQueueManager queueManager, NmqQueueConfiguration configuration)
         {
-            Configuration = config;
-            Key = config.Name.ToLower();
+            Configuration = configuration;
+            Key = configuration.Name.ToLower();
 
             _queueManager = queueManager;
             _keepRunning = true;
@@ -27,6 +49,10 @@ namespace NTDLS.MemoryQueue.Engine
             _distributionThread.Start();
         }
 
+        /// <summary>
+        /// Stops the distribution thread and shutsdown the queue.
+        /// </summary>
+        /// <param name="waitForThreadToExit">Whether or not to wait on the distribution thread to exit after shutdown.</param>
         public void Shutdown(bool waitForThreadToExit)
         {
             _keepRunning = false;
@@ -36,23 +62,57 @@ namespace NTDLS.MemoryQueue.Engine
             }
         }
 
+        /// <summary>
+        /// Adds a single message to the queue.
+        /// </summary>
+        /// <param name="payloadJson">The json of the object which is the subject of the message.</param>
+        /// <param name="payloadType">The original type of the payload.</param>
         public void AddMessage(string payloadJson, string payloadType)
             => Messages.Use((o) => o.Add(new NmqQueuedMessage(payloadJson, payloadType)));
 
+        /// <summary>
+        /// Adds a single query to the queue.
+        /// </summary>
+        /// <param name="originationId">The id of the connection that called the method.</param>
+        /// <param name="queryId">The unique id of the query. Used to tie the query to the reply.</param>
+        /// <param name="payloadJson">The json of the object which is the subject of the query.</param>
+        /// <param name="payloadType">The original type of the payload.</param>
+        /// <param name="replyType">The type of the reply object. The json should be deserilizable to this type.</param>
         public void AddQuery(Guid originationId, Guid queryId, string payloadJson, string payloadType, string replyType)
             => Messages.Use((o) => o.Add(new NmqQueuedQuery(originationId, queryId, payloadJson, payloadType, replyType)));
 
+        /// <summary>
+        /// Adds a single query-reply to the queue.
+        /// </summary>
+        /// <param name="originationId">The id of the connection that called the method.</param>
+        /// <param name="queryId">The unique id of the query. Used to tie the query to the reply.</param>
+        /// <param name="payloadJson">The json of the object which is the subject of the query-reply.</param>
+        /// <param name="payloadType">The original type of the payload.</param>
+        /// <param name="replyType">The type of the reply object. The json should be deserilizable to this type.</param>
         public void AddQueryReply(Guid originationId, Guid queryId, string payloadJson, string payloadType, string replyType)
             => Messages.Use((o) => o.Add(new NmqQueuedQueryReply(originationId, queryId, payloadJson, payloadType, replyType)));
 
+        /// <summary>
+        /// Subscribes a given connection to the queue.
+        /// </summary>
+        /// <param name="connectionId">The connection id that wants to subscribe.</param>
         public void Subscribe(Guid connectionId)
             => Subscribers.Add(connectionId);
 
+        /// <summary>
+        /// Unsubscribes a given connection from the queue.
+        /// </summary>
+        /// <param name="connectionId">The connection id that wants to unsubscribe.</param>
         public void Unsubscribe(Guid connectionId)
             => Subscribers.Remove(connectionId);
 
+        /// <summary>
+        /// The thread that is responsible for distributing messages to the subscribers.
+        /// </summary>
         private void DistributionThreadProc()
         {
+            Thread.CurrentThread.Name = $"NmqQueue:DistributionThreadProc:{Environment.CurrentManagedThreadId}";
+
             Utility.EnsureNotNull(_queueManager.Server);
 
             while (_keepRunning)
