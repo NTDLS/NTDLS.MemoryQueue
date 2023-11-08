@@ -1,6 +1,5 @@
-﻿using Newtonsoft.Json;
-using NTDLS.Semaphore;
-using System.Diagnostics;
+﻿using Microsoft.Extensions.Caching.Memory;
+using Newtonsoft.Json;
 using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using System.Runtime.CompilerServices;
@@ -9,13 +8,7 @@ namespace NTDLS.MemoryQueue
 {
     internal static class Utility
     {
-        private static readonly CriticalResource<Dictionary<string, MethodInfo>> _reflectioncache = new();
-
-        [MethodImpl(MethodImplOptions.NoInlining)]
-        public static string GetCurrentMethod()
-        {
-            return (new StackTrace())?.GetFrame(1)?.GetMethod()?.Name ?? "{unknown frame}";
-        }
+        private static readonly MemoryCache _reflectioncache = new(new MemoryCacheOptions());
 
         public delegate void TryAndIgnoreProc();
         public delegate T TryAndIgnoreProc<T>();
@@ -52,37 +45,34 @@ namespace NTDLS.MemoryQueue
             }
         }
 
+        /// <summary>
+        /// This is used by ExtractGenericType() and is accessed via reflection.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="json"></param>
+        /// <returns></returns>
         public static T? JsonDeserializeToObject<T>(string json)
             => JsonConvert.DeserializeObject<T>(json);
 
         internal static T ExtractGenericType<T>(string payload, string typeName)
         {
-            var genericToObjectMethod = _reflectioncache.Use((o) =>
+            var genericDeserializationMethod = (MethodInfo?)_reflectioncache.Get(typeName);
+            if (genericDeserializationMethod != null)
             {
-                if (o.TryGetValue(typeName, out var method))
-                {
-                    return method;
-                }
-                return null;
-            });
-
-            if (genericToObjectMethod != null)
-            {
-                return (T?)genericToObjectMethod.Invoke(null, new object[] { payload })
+                return (T?)genericDeserializationMethod.Invoke(null, new object[] { payload })
                     ?? throw new Exception($"ExtractGenericType: Payload can not be null.");
             }
 
             var genericType = Type.GetType(typeName)
                 ?? throw new Exception($"ExtractGenericType: Unknown payload type {typeName}.");
 
-            var toObjectMethod = typeof(Utility).GetMethod("JsonDeserializeToObject")
+            var jsonDeserializeToObject = typeof(Utility).GetMethod("JsonDeserializeToObject")
                 ?? throw new Exception($"ExtractGenericType: Could not find JsonDeserializeToObject().");
 
-            genericToObjectMethod = toObjectMethod.MakeGenericMethod(genericType);
+            genericDeserializationMethod = jsonDeserializeToObject.MakeGenericMethod(genericType);
+            _reflectioncache.Set(typeName, genericDeserializationMethod, TimeSpan.FromSeconds(600));
 
-            _reflectioncache.Use((o) => o.TryAdd(typeName, genericToObjectMethod));
-
-            return (T?)genericToObjectMethod.Invoke(null, new object[] { payload })
+            return (T?)genericDeserializationMethod.Invoke(null, new object[] { payload })
                 ?? throw new Exception($"ExtractGenericType: Payload can not be null.");
         }
     }
