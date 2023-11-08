@@ -7,14 +7,10 @@ namespace NTDLS.MemoryQueue.Payloads.ClientBound
     /// </summary>
     internal class NmqClientBoundQueryReply : IFrameNotification
     {
-        public string QueueName { get; set; } = string.Empty;
+        public string QueueName { get; set; }
         public Guid QueryId { get; set; }
         public Guid OriginationId { get; set; }
         public string? Payload { get; set; }
-
-        public NmqClientBoundQueryReply()
-        {
-        }
 
         public NmqClientBoundQueryReply(string queueName, Guid originationId, Guid queryId, string payload)
         {

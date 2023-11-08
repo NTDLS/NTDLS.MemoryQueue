@@ -7,11 +7,7 @@ namespace NTDLS.MemoryQueue.Payloads.ClientBound
     /// </summary>
     internal class NmqClientBoundMessage : IFrameNotification
     {
-        public string? Payload { get; set; }
-
-        public NmqClientBoundMessage()
-        {
-        }
+        public string Payload { get; set; }
 
         public NmqClientBoundMessage(string payload)
         {

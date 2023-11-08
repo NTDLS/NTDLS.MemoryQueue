@@ -94,7 +94,8 @@ namespace NTDLS.MemoryQueue.Engine
                             {
                                 if (subscriber == queuedQueryReply.OriginationId) //Only send the reply to the connection that originated the query.
                                 {
-                                    _queueManager.Server.Notify(subscriber, new NmqClientBoundQueryReply(Configuration.Name, queuedQueryReply.OriginationId, queuedQueryReply.QueryId, queuedQueryReply.Payload));
+                                    _queueManager.Server.Notify(subscriber,
+                                        new NmqClientBoundQueryReply(Configuration.Name, queuedQueryReply.OriginationId, queuedQueryReply.QueryId, queuedQueryReply.Payload));
                                 }
                             }
                             message.SatisfiedSubscribers.Add(subscriber);

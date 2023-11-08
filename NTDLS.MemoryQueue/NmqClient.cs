@@ -21,6 +21,7 @@ namespace NTDLS.ReliableMessaging
         private readonly CriticalResource<Dictionary<Guid, QueryWaitingForReply>> _queriesWaitingForReply = new();
 
         #region Events.
+
         /// <summary>
         /// Event fired when a client connects to the server.
         /// </summary>
@@ -54,7 +55,6 @@ namespace NTDLS.ReliableMessaging
         /// <param name="connectionId">The id of the client which send the message.</param>
         /// <param name="payload"></param>
         public delegate void MessageReceivedEvent(NmqClient client, NmqMessageReceivedEventParam message);
-
 
         /// <summary>
         /// Event fired when a query is received from a client.
