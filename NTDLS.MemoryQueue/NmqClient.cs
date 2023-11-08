@@ -1,6 +1,5 @@
 ﻿using Newtonsoft.Json;
 using NTDLS.MemoryQueue.Engine;
-using NTDLS.MemoryQueue.Events;
 using NTDLS.MemoryQueue.Payloads;
 using NTDLS.MemoryQueue.Payloads.ClientBound;
 using NTDLS.MemoryQueue.Payloads.ServerBound;
@@ -55,7 +54,7 @@ namespace NTDLS.ReliableMessaging
         /// <param name="client">The instance of the client that is calling the event.</param>
         /// <param name="connectionId">The id of the client which send the message.</param>
         /// <param name="payload"></param>
-        public delegate void MessageReceivedEvent(NmqClient client, NmqMessageReceivedEventParam message);
+        public delegate void MessageReceivedEvent(NmqClient client, INmqMessage message);
 
         /// <summary>
         /// Event fired when a query is received from a client.
@@ -84,10 +83,15 @@ namespace NTDLS.ReliableMessaging
             _activeConnection.SendNotification(new NmqDeleteQueue(queueName));
         }
 
-        public void Enqueue(string queueName, string payload)
+        public void Enqueue(string queueName, INmqMessage message)
         {
             Utility.EnsureNotNull(_activeConnection);
-            _activeConnection.SendNotification(new NmqEnqueueMessage(queueName, payload));
+
+            var payloadJson = JsonConvert.SerializeObject(message);
+
+            var payloadType = message.GetType().AssemblyQualifiedName ?? throw new Exception("The message type could not be determined.");
+
+            _activeConnection.SendNotification(new NmqEnqueueMessage(queueName, payloadJson, payloadType));
         }
 
         private void EnqueueQueryReply(NmqClientBoundQuery query, string payload, string payloadType, string replyType)
@@ -96,7 +100,7 @@ namespace NTDLS.ReliableMessaging
             _activeConnection.SendNotification(new NmqEnqueueQueryReply(query.QueueName, query.QueryId, payload, payloadType, replyType));
         }
 
-        public async Task<T?> Query<T>(string queueName, INmqQuery payload, int secondsTimeout = 30) where T : INmqQueryReply
+        public async Task<T?> Query<T>(string queueName, INmqQuery query, int secondsTimeout = 30) where T : INmqQueryReply
         {
             Utility.EnsureNotNull(_activeConnection);
 
@@ -105,12 +109,12 @@ namespace NTDLS.ReliableMessaging
             _queriesWaitingForReply.Use((o)
                 => o.Add(waitingQuery.QueryId, waitingQuery));
 
-            var jsonString = JsonConvert.SerializeObject(payload);
+            var payloadJson = JsonConvert.SerializeObject(query);
 
-            var payloadType = payload.GetType().AssemblyQualifiedName ?? throw new Exception("The payload type could not be determined.");
+            var payloadType = query.GetType().AssemblyQualifiedName ?? throw new Exception("The query type could not be determined.");
             var replyType = typeof(T).AssemblyQualifiedName ?? throw new Exception("The reply type could not be determined.");
 
-            _activeConnection.SendNotification(new NmqEnqueueQuery(queueName, waitingQuery.QueryId, jsonString, payloadType, replyType));
+            _activeConnection.SendNotification(new NmqEnqueueQuery(queueName, waitingQuery.QueryId, payloadJson, payloadType, replyType));
 
             return await Task.Run(() =>
             {
@@ -250,44 +254,41 @@ namespace NTDLS.ReliableMessaging
 
         void IMessageHub.InvokeOnNotificationReceived(Guid connectionId, IFrameNotification payload)
         {
-            if (payload is NmqClientBoundMessage broadcastMessage)
+            if (payload is NmqClientBoundMessage clientBoundMessage)
             {
                 if (OnMessageReceived == null)
                 {
                     throw new Exception("The notification message hander event was not handled.");
                 }
 
-                var param = new NmqMessageReceivedEventParam()
-                {
-                    Payload = broadcastMessage.Payload
-                };
+                var message = Utility.ExtractGenericType<INmqMessage>(clientBoundMessage.Payload, clientBoundMessage.PayloadType);
 
-                OnMessageReceived.Invoke(this, param);
+                OnMessageReceived.Invoke(this, message);
             }
-            else if (payload is NmqClientBoundQuery broadcastQuery)
+            else if (payload is NmqClientBoundQuery clientBoundQuery)
             {
                 if (OnQueryReceived == null)
                 {
                     throw new Exception("The query message hander event was not handled.");
                 }
 
-                var query = Utility.ExtractGenericType<INmqQuery>(broadcastQuery.Payload, broadcastQuery.PayloadType);
+                var query = Utility.ExtractGenericType<INmqQuery>(clientBoundQuery.Payload, clientBoundQuery.PayloadType);
 
                 var queryResultPayload = OnQueryReceived.Invoke(this, query);
 
                 string replyPayloadJson = JsonConvert.SerializeObject(queryResultPayload);
 
-                EnqueueQueryReply(broadcastQuery, replyPayloadJson, broadcastQuery.PayloadType, broadcastQuery.ReplyType);
+                EnqueueQueryReply(clientBoundQuery, replyPayloadJson, clientBoundQuery.PayloadType, clientBoundQuery.ReplyType);
             }
-            else if (payload is NmqClientBoundQueryReply broadcastQueryReply)
+            else if (payload is NmqClientBoundQueryReply clientBoundQueryReply)
             {
                 _queriesWaitingForReply.Use((o) =>
                 {
-                    if (o.TryGetValue(broadcastQueryReply.QueryId, out var waitingQuery))
+                    if (o.TryGetValue(clientBoundQueryReply.QueryId, out var waitingQuery))
                     {
-                        waitingQuery.SetReplyPayload(broadcastQueryReply.Payload);
+                        waitingQuery.SetReplyPayload(clientBoundQueryReply.Payload);
                         waitingQuery.Waiter.Set();
-                        o.Remove(broadcastQueryReply.QueryId);
+                        o.Remove(clientBoundQueryReply.QueryId);
                     }
                     else
                     {

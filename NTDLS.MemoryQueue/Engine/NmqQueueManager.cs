@@ -42,14 +42,14 @@ namespace NTDLS.MemoryQueue.Engine
             queue.Subscribers.Remove(connectionId);
         }
 
-        public void Equeue(string queueName, string payload)
+        public void Equeue(string queueName, string payload, string payloadType)
         {
             if (TryGet(queueName, out var queue) == false)
             {
                 throw new Exception($"The queue does not exists: {queueName}.");
             }
 
-            queue.AddMessage(payload);
+            queue.AddMessage(payload, payloadType);
         }
 
         public void EqueueQuery(Guid originationId, string queueName, Guid queryId, string payload, string payloadType, string replyType)

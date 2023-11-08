@@ -46,13 +46,24 @@ namespace NTDLS.ReliableMessaging
 
         #endregion
 
-        public void CreateQueue(NmqQueueConfiguration config) => _qeueManager.Use((o) => o.Add(config));
-        public void DeleteQueue(Guid connectionId, string queueName) => _qeueManager.Use((o) => o.Delete(connectionId, queueName));
-        public void Subscribe(Guid connectionId, string queueName) => _qeueManager.Use((o) => o.Subscribe(connectionId, queueName));
-        public void Unsubscribe(Guid connectionId, string queueName) => _qeueManager.Use((o) => o.Unsubscribe(connectionId, queueName));
-        public void Equeue(string queueName, string payload) => _qeueManager.Use((o) => o.Equeue(queueName, payload));
-        public void EqueueQuery(Guid originationId, string queueName, Guid queryId, string payload, string payloadType, string replyType) =>
-            _qeueManager.Use((o) => o.EqueueQuery(originationId, queueName, queryId, payload, payloadType, replyType));
+        public void CreateQueue(NmqQueueConfiguration config)
+            => _qeueManager.Use((o) => o.Add(config));
+
+        public void DeleteQueue(Guid connectionId, string queueName)
+            => _qeueManager.Use((o) => o.Delete(connectionId, queueName));
+
+        public void Subscribe(Guid connectionId, string queueName)
+            => _qeueManager.Use((o) => o.Subscribe(connectionId, queueName));
+
+        public void Unsubscribe(Guid connectionId, string queueName)
+            => _qeueManager.Use((o) => o.Unsubscribe(connectionId, queueName));
+
+        public void Equeue(string queueName, string payload, string payloadType)
+            => _qeueManager.Use((o) => o.Equeue(queueName, payload, payloadType));
+
+        public void EqueueQuery(Guid originationId, string queueName, Guid queryId, string payload, string payloadType, string replyType)
+            => _qeueManager.Use((o) => o.EqueueQuery(originationId, queueName, queryId, payload, payloadType, replyType));
+
         public void EqueueQueryReply(Guid originationId, string queueName, Guid queryId, string payload, string payloadType, string replyType)
             => _qeueManager.Use((o) => o.EqueueQueryReply(originationId, queueName, queryId, payload, payloadType, replyType));
 
@@ -197,7 +208,7 @@ namespace NTDLS.ReliableMessaging
             }
             else if (payload is NmqEnqueueMessage enqueue)
             {
-                Equeue(enqueue.QueueName, enqueue.Payload);
+                Equeue(enqueue.QueueName, enqueue.Payload, enqueue.PayloadType);
             }
             else if (payload is NmqEnqueueQuery enqueueQuery)
             {
@@ -213,7 +224,7 @@ namespace NTDLS.ReliableMessaging
             }
             else
             {
-                throw new Exception("The server bound notification is not implemented .");
+                throw new Exception("The server bound notification type is not implemented.");
             }
         }
     }

@@ -9,11 +9,13 @@ namespace NTDLS.MemoryQueue.Payloads.ServerBound
     {
         public string QueueName { get; set; }
         public string Payload { get; set; }
+        public string PayloadType { get; set; }
 
-        public NmqEnqueueMessage(string queueName, string payload)
+        public NmqEnqueueMessage(string queueName, string payload, string payloadType)
         {
             QueueName = queueName;
             Payload = payload;
+            PayloadType = payloadType;
         }
     }
 }
