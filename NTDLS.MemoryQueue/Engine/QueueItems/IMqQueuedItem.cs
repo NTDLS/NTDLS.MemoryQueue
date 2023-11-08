@@ -7,6 +7,10 @@
     {
         public DateTime CreatedDate { get; }
         public string PayloadJson { get; }
-        public HashSet<Guid> SatisfiedSubscribers { get; }
+
+        public void RecordSuccessfulDistribution(Guid connectionId);
+        public void RecordUnsuccessfulDistribution(Guid connectionId);
+        public bool IsDistributionComplete(Guid connectionId);
+        public bool IsDistributionComplete(HashSet<Guid> subscribers);
     }
 }

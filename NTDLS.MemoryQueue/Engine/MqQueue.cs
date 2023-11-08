@@ -120,14 +120,14 @@ namespace NTDLS.MemoryQueue.Engine
                 HashSet<Guid>? subscribers = null;
 
                 var message = Messages.Use((o) =>
-                 {
-                     subscribers = new HashSet<Guid>(Subscribers); //ClLone the subscribers.
-                     if (o.Any())
-                     {
-                         return o[0];
-                     }
-                     return null;
-                 });
+                {
+                    subscribers = new HashSet<Guid>(Subscribers); //Clone the subscribers.
+                    if (o.Any())
+                    {
+                        return o[0];
+                    }
+                    return null;
+                });
 
                 if (message == null || subscribers == null)
                 {
@@ -140,7 +140,7 @@ namespace NTDLS.MemoryQueue.Engine
                 {
                     try
                     {
-                        if (message.SatisfiedSubscribers.Contains(subscriber) == false) //Make sure we have not already sent this message to this subscriber. 
+                        if (message.IsDistributionComplete(subscriber) == false) //Make sure we have not already sent this message to this subscriber. 
                         {
                             if (message is MqQueuedMessage queuedMessage)
                             {
@@ -160,16 +160,17 @@ namespace NTDLS.MemoryQueue.Engine
                                             queuedQueryReply.QueryId, queuedQueryReply.PayloadJson, queuedQueryReply.PayloadType, queuedQueryReply.ReplyType));
                                 }
                             }
-                            message.SatisfiedSubscribers.Add(subscriber);
+
+                            message.RecordSuccessfulDistribution(subscriber);
                         }
                     }
                     catch
                     {
-                        //TODO: keep a count of attempts to send this message to this subscriber so we can give up after a given number of attempts.
+                        message.RecordUnsuccessfulDistribution(subscriber);
                     }
                 }
 
-                if (subscribers.Except(message.SatisfiedSubscribers).Any() == false)
+                if (message.IsDistributionComplete(subscribers))
                 {
                     //When distribution is successful to all subscribers, remove the message from the queue.
                     Messages.Use((o) => o.RemoveAt(0));

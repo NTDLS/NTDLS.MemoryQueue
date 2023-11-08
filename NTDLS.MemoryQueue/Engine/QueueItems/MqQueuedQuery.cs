@@ -3,16 +3,13 @@
     /// <summary>
     /// Represents a "physical" query message that is waiting in the queue.
     /// </summary>
-    internal class MqQueuedQuery : IMqQueuedItem
+    internal class MqQueuedQuery : MqQueuedItemBase, IMqQueuedItem
     {
         /// <summary>
         /// The ID of the client connection that expects a response to this query.
         /// </summary>
         public Guid OriginationId { get; private set; }
         public Guid QueryId { get; private set; }
-        public DateTime CreatedDate { get; private set; } = DateTime.UtcNow;
-        public string PayloadJson { get; private set; }
-        public string PayloadType { get; private set; }
         public string ReplyType { get; private set; }
 
         /// <summary>
@@ -21,11 +18,10 @@
         public HashSet<Guid> SatisfiedSubscribers { get; private set; } = new();
 
         public MqQueuedQuery(Guid originationId, Guid queryId, string payloadJson, string payloadType, string replyType)
+            : base(payloadJson, payloadType)
         {
             OriginationId = originationId;
             QueryId = queryId;
-            PayloadJson = payloadJson;
-            PayloadType = payloadType;
             ReplyType = replyType;
         }
     }
