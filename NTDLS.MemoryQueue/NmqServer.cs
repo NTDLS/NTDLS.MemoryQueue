@@ -18,7 +18,7 @@ namespace NTDLS.ReliableMessaging
         private Thread? _listenerThreadProc;
         private bool _keepRunning;
 
-        private readonly CriticalResource<NmqQueueManager> _queues = new();
+        private readonly CriticalResource<NmqQueueManager> _qeueManager = new();
 
         #region Events.
 
@@ -71,10 +71,10 @@ namespace NTDLS.ReliableMessaging
 
         #endregion
 
-        public void CreateQueue(NmqQueueConfiguration config) => _queues.Use((o) => o.Add(config));
-        public void Subscribe(Guid connectionId, string queueName) => _queues.Use((o) => o.Subscribe(connectionId, queueName));
-        public void Unsubscribe(Guid connectionId, string queueName) => _queues.Use((o) => o.Unsubscribe(connectionId, queueName));
-        public void Equeue(Guid connectionId, string queueName, string payload) => _queues.Use((o) => o.Equeue(connectionId, queueName, payload));
+        public void CreateQueue(NmqQueueConfiguration config) => _qeueManager.Use((o) => o.Add(config));
+        public void Subscribe(Guid connectionId, string queueName) => _qeueManager.Use((o) => o.Subscribe(connectionId, queueName));
+        public void Unsubscribe(Guid connectionId, string queueName) => _qeueManager.Use((o) => o.Unsubscribe(connectionId, queueName));
+        public void Equeue(Guid connectionId, string queueName, string payload) => _qeueManager.Use((o) => o.Equeue(connectionId, queueName, payload));
 
         /// <summary>
         /// Starts the message server.
@@ -85,7 +85,7 @@ namespace NTDLS.ReliableMessaging
             {
                 return;
             }
-            _queues.Use((o) => o.SetServer(this));
+            _qeueManager.Use((o) => o.SetServer(this));
 
             _listener = new TcpListener(IPAddress.Any, listenPort);
             _keepRunning = true;
@@ -112,7 +112,7 @@ namespace NTDLS.ReliableMessaging
                 o.Clear();
             });
 
-            _queues.Use((o) => o.Shutdown(true));
+            _qeueManager.Use((o) => o.Shutdown(true));
         }
 
         void ListenerThreadProc()
