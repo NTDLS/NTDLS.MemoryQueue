@@ -9,16 +9,16 @@ In memory non-persistent message queue with notifications/messages, query/reply
 
 >**Running the server:**
 >
->Running the server is literally two lines of code and can be run in the same process as the client.
+>Running the server can literally be done with two lines of code and can be run in the same process as the client.
 >The server does not have to be dedicated either, it can be one of the process that is involved in inner-process-communication.
 ```csharp
 internal class Program
 {
-    static MqServer _server = new MqServer();
+    static MqServer _server = new MqServer(); //Literal line #1.
 
     static void Main()
     {
-        _server.Start(45784);
+        _server.Start(45784); //Literal line #2.
 
         Console.WriteLine("Press [enter] to shutdown.");
         Console.ReadLine();
