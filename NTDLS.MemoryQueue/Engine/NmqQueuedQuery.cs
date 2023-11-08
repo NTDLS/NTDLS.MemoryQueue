@@ -8,7 +8,7 @@
         public Guid OriginationId { get; private set; }
         public Guid QueryId { get; private set; }
         public DateTime CreatedDate { get; private set; } = DateTime.UtcNow;
-        public string Payload { get; private set; }
+        public string PayloadJson { get; private set; }
         public string PayloadType { get; private set; }
         public string ReplyType { get; private set; }
 
@@ -17,11 +17,11 @@
         /// </summary>
         public HashSet<Guid> SatisfiedSubscribers { get; private set; } = new();
 
-        public NmqQueuedQuery(Guid originationId, Guid queryId, string payload, string payloadType, string replyType)
+        public NmqQueuedQuery(Guid originationId, Guid queryId, string payloadJson, string payloadType, string replyType)
         {
             OriginationId = originationId;
             QueryId = queryId;
-            Payload = payload;
+            PayloadJson = payloadJson;
             PayloadType = payloadType;
             ReplyType = replyType;
         }

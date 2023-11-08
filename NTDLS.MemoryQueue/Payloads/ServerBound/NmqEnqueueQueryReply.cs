@@ -6,15 +6,15 @@ namespace NTDLS.MemoryQueue.Payloads.ServerBound
     internal class NmqEnqueueQueryReply : IFrameNotification
     {
         public string QueueName { get; set; }
-        public string Payload { get; set; }
+        public string PayloadJson { get; set; }
         public Guid QueryId { get; set; }
         public string PayloadType { get; set; }
         public string ReplyType { get; set; }
 
-        public NmqEnqueueQueryReply(string queueName, Guid queryId, string payload, string payloadType, string replyType)
+        public NmqEnqueueQueryReply(string queueName, Guid queryId, string payloadJson, string payloadType, string replyType)
         {
             QueueName = queueName;
-            Payload = payload;
+            PayloadJson = payloadJson;
             QueryId = queryId;
             PayloadType = payloadType;
             ReplyType = replyType;

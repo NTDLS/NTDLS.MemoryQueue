@@ -3,7 +3,7 @@
     internal class NmqQueuedMessage : INmqQueuedItem
     {
         public DateTime CreatedDate { get; private set; } = DateTime.UtcNow;
-        public string Payload { get; private set; }
+        public string PayloadJson { get; private set; }
         public string PayloadType { get; private set; }
 
         /// <summary>
@@ -11,9 +11,9 @@
         /// </summary>
         public HashSet<Guid> SatisfiedSubscribers { get; set; } = new();
 
-        public NmqQueuedMessage(string payload, string payloadType)
+        public NmqQueuedMessage(string payloadJson, string payloadType)
         {
-            Payload = payload;
+            PayloadJson = payloadJson;
             PayloadType = payloadType;
         }
     }

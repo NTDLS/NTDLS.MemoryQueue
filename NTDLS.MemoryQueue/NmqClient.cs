@@ -94,10 +94,10 @@ namespace NTDLS.ReliableMessaging
             _activeConnection.SendNotification(new NmqEnqueueMessage(queueName, payloadJson, payloadType));
         }
 
-        private void EnqueueQueryReply(NmqClientBoundQuery query, string payload, string payloadType, string replyType)
+        private void EnqueueQueryReply(NmqClientBoundQuery query, string payloadJson, string payloadType, string replyType)
         {
             Utility.EnsureNotNull(_activeConnection);
-            _activeConnection.SendNotification(new NmqEnqueueQueryReply(query.QueueName, query.QueryId, payload, payloadType, replyType));
+            _activeConnection.SendNotification(new NmqEnqueueQueryReply(query.QueueName, query.QueryId, payloadJson, payloadType, replyType));
         }
 
         public async Task<T?> Query<T>(string queueName, INmqQuery query, int secondsTimeout = 30) where T : INmqQueryReply
@@ -129,33 +129,6 @@ namespace NTDLS.ReliableMessaging
                 throw new Exception("Query timeout expired.");
             });
         }
-
-        /*
-        public async Task<string?> Query(string queueName, string payload, int secondsTimeout = 30)
-        {
-            Utility.EnsureNotNull(_activeConnection);
-
-            var waitingQuery = new QueryWaitingForReply();
-
-            _queriesWaitingForReply.Use((o)
-                => o.Add(waitingQuery.QueryId, waitingQuery));
-
-            _activeConnection.SendNotification(new NmqEnqueueQuery(queueName, waitingQuery.QueryId, payload, ));
-
-            return await Task.Run(() =>
-            {
-                if (waitingQuery.Waiter.WaitOne(secondsTimeout * 1000))
-                {
-                    return waitingQuery.Payload;
-                }
-
-                _queriesWaitingForReply.Use((o)
-                    => o.Remove(waitingQuery.QueryId));
-
-                throw new Exception("Query timeout expired.");
-            });
-        }
-        */
 
         public void Subscribe(string queueName)
         {
@@ -261,7 +234,7 @@ namespace NTDLS.ReliableMessaging
                     throw new Exception("The notification message hander event was not handled.");
                 }
 
-                var message = Utility.ExtractGenericType<INmqMessage>(clientBoundMessage.Payload, clientBoundMessage.PayloadType);
+                var message = Utility.ExtractGenericType<INmqMessage>(clientBoundMessage.PayloadJson, clientBoundMessage.PayloadType);
 
                 OnMessageReceived.Invoke(this, message);
             }
@@ -272,7 +245,7 @@ namespace NTDLS.ReliableMessaging
                     throw new Exception("The query message hander event was not handled.");
                 }
 
-                var query = Utility.ExtractGenericType<INmqQuery>(clientBoundQuery.Payload, clientBoundQuery.PayloadType);
+                var query = Utility.ExtractGenericType<INmqQuery>(clientBoundQuery.PayloadJson, clientBoundQuery.PayloadType);
 
                 var queryResultPayload = OnQueryReceived.Invoke(this, query);
 
@@ -286,7 +259,7 @@ namespace NTDLS.ReliableMessaging
                 {
                     if (o.TryGetValue(clientBoundQueryReply.QueryId, out var waitingQuery))
                     {
-                        waitingQuery.SetReplyPayload(clientBoundQueryReply.Payload);
+                        waitingQuery.SetReplyPayload(clientBoundQueryReply.PayloadJson);
                         waitingQuery.Waiter.Set();
                         o.Remove(clientBoundQueryReply.QueryId);
                     }

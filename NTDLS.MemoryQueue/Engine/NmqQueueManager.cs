@@ -42,34 +42,34 @@ namespace NTDLS.MemoryQueue.Engine
             queue.Subscribers.Remove(connectionId);
         }
 
-        public void Equeue(string queueName, string payload, string payloadType)
+        public void EqueueMessage(string queueName, string payloadJson, string payloadType)
         {
             if (TryGet(queueName, out var queue) == false)
             {
                 throw new Exception($"The queue does not exists: {queueName}.");
             }
 
-            queue.AddMessage(payload, payloadType);
+            queue.AddMessage(payloadJson, payloadType);
         }
 
-        public void EqueueQuery(Guid originationId, string queueName, Guid queryId, string payload, string payloadType, string replyType)
+        public void EqueueQuery(Guid originationId, string queueName, Guid queryId, string payloadJson, string payloadType, string replyType)
         {
             if (TryGet(queueName, out var queue) == false)
             {
                 throw new Exception($"The queue does not exists: {queueName}.");
             }
 
-            queue.AddQuery(originationId, queryId, payload, payloadType, replyType);
+            queue.AddQuery(originationId, queryId, payloadJson, payloadType, replyType);
         }
 
-        public void EqueueQueryReply(Guid originationId, string queueName, Guid queryId, string payload, string payloadType, string replyType)
+        public void EqueueQueryReply(Guid originationId, string queueName, Guid queryId, string payloadJson, string payloadType, string replyType)
         {
             if (TryGet(queueName, out var queue) == false)
             {
                 throw new Exception($"The queue does not exists: {queueName}.");
             }
 
-            queue.AddQueryReply(originationId, queryId, payload, payloadType, replyType);
+            queue.AddQueryReply(originationId, queryId, payloadJson, payloadType, replyType);
         }
 
         public void Add(NmqQueueConfiguration config)

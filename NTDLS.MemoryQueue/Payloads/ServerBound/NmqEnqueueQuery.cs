@@ -9,15 +9,15 @@ namespace NTDLS.MemoryQueue.Payloads.ServerBound
     {
         public Guid QueryId { get; set; }
         public string QueueName { get; set; }
-        public string Payload { get; set; }
+        public string PayloadJson { get; set; }
         public string PayloadType { get; set; }
         public string ReplyType { get; set; }
 
-        public NmqEnqueueQuery(string queueName, Guid queryId, string payload, string payloadType, string replyType)
+        public NmqEnqueueQuery(string queueName, Guid queryId, string payloadJson, string payloadType, string replyType)
         {
             QueueName = queueName;
             QueryId = queryId;
-            Payload = payload;
+            PayloadJson = payloadJson;
             PayloadType = payloadType;
             ReplyType = replyType;
         }

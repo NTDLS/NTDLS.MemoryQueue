@@ -36,14 +36,14 @@ namespace NTDLS.MemoryQueue.Engine
             }
         }
 
-        public void AddMessage(string payload, string payloadType)
-            => Messages.Use((o) => o.Add(new NmqQueuedMessage(payload, payloadType)));
+        public void AddMessage(string payloadJson, string payloadType)
+            => Messages.Use((o) => o.Add(new NmqQueuedMessage(payloadJson, payloadType)));
 
-        public void AddQuery(Guid originationId, Guid queryId, string payload, string payloadType, string replyType)
-            => Messages.Use((o) => o.Add(new NmqQueuedQuery(originationId, queryId, payload, payloadType, replyType)));
+        public void AddQuery(Guid originationId, Guid queryId, string payloadJson, string payloadType, string replyType)
+            => Messages.Use((o) => o.Add(new NmqQueuedQuery(originationId, queryId, payloadJson, payloadType, replyType)));
 
-        public void AddQueryReply(Guid originationId, Guid queryId, string payload, string payloadType, string replyType)
-            => Messages.Use((o) => o.Add(new NmqQueuedQueryReply(originationId, queryId, payload, payloadType, replyType)));
+        public void AddQueryReply(Guid originationId, Guid queryId, string payloadJson, string payloadType, string replyType)
+            => Messages.Use((o) => o.Add(new NmqQueuedQueryReply(originationId, queryId, payloadJson, payloadType, replyType)));
 
         public void Subscribe(Guid connectionId)
             => Subscribers.Add(connectionId);
@@ -84,12 +84,12 @@ namespace NTDLS.MemoryQueue.Engine
                         {
                             if (message is NmqQueuedMessage queuedMessage)
                             {
-                                _queueManager.Server.Notify(subscriber, new NmqClientBoundMessage(queuedMessage.Payload, queuedMessage.PayloadType));
+                                _queueManager.Server.Notify(subscriber, new NmqClientBoundMessage(queuedMessage.PayloadJson, queuedMessage.PayloadType));
                             }
                             else if (message is NmqQueuedQuery queuedQuery)
                             {
                                 _queueManager.Server.Notify(subscriber, new NmqClientBoundQuery(Configuration.Name,
-                                    queuedQuery.QueryId, queuedQuery.Payload, queuedQuery.PayloadType, queuedQuery.ReplyType));
+                                    queuedQuery.QueryId, queuedQuery.PayloadJson, queuedQuery.PayloadType, queuedQuery.ReplyType));
                             }
                             else if (message is NmqQueuedQueryReply queuedQueryReply)
                             {
@@ -97,7 +97,7 @@ namespace NTDLS.MemoryQueue.Engine
                                 {
                                     _queueManager.Server.Notify(subscriber,
                                         new NmqClientBoundQueryReply(Configuration.Name, queuedQueryReply.OriginationId,
-                                            queuedQueryReply.QueryId, queuedQueryReply.Payload, queuedQueryReply.PayloadType, queuedQueryReply.ReplyType));
+                                            queuedQueryReply.QueryId, queuedQueryReply.PayloadJson, queuedQueryReply.PayloadType, queuedQueryReply.ReplyType));
                                 }
                             }
                             message.SatisfiedSubscribers.Add(subscriber);

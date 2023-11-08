@@ -3,7 +3,7 @@
     internal interface INmqQueuedItem
     {
         public DateTime CreatedDate { get; }
-        public string Payload { get; }
+        public string PayloadJson { get; }
         public HashSet<Guid> SatisfiedSubscribers { get; }
     }
 }

@@ -58,14 +58,14 @@ namespace NTDLS.ReliableMessaging
         public void Unsubscribe(Guid connectionId, string queueName)
             => _qeueManager.Use((o) => o.Unsubscribe(connectionId, queueName));
 
-        public void Equeue(string queueName, string payload, string payloadType)
-            => _qeueManager.Use((o) => o.Equeue(queueName, payload, payloadType));
+        public void Equeue(string queueName, string payloadJson, string payloadType)
+            => _qeueManager.Use((o) => o.EqueueMessage(queueName, payloadJson, payloadType));
 
-        public void EqueueQuery(Guid originationId, string queueName, Guid queryId, string payload, string payloadType, string replyType)
-            => _qeueManager.Use((o) => o.EqueueQuery(originationId, queueName, queryId, payload, payloadType, replyType));
+        public void EqueueQuery(Guid originationId, string queueName, Guid queryId, string payloadJson, string payloadType, string replyType)
+            => _qeueManager.Use((o) => o.EqueueQuery(originationId, queueName, queryId, payloadJson, payloadType, replyType));
 
-        public void EqueueQueryReply(Guid originationId, string queueName, Guid queryId, string payload, string payloadType, string replyType)
-            => _qeueManager.Use((o) => o.EqueueQueryReply(originationId, queueName, queryId, payload, payloadType, replyType));
+        public void EqueueQueryReply(Guid originationId, string queueName, Guid queryId, string payloadJson, string payloadType, string replyType)
+            => _qeueManager.Use((o) => o.EqueueQueryReply(originationId, queueName, queryId, payloadJson, payloadType, replyType));
 
         /// <summary>
         /// Starts the message server.
@@ -208,15 +208,15 @@ namespace NTDLS.ReliableMessaging
             }
             else if (payload is NmqEnqueueMessage enqueue)
             {
-                Equeue(enqueue.QueueName, enqueue.Payload, enqueue.PayloadType);
+                Equeue(enqueue.QueueName, enqueue.PayloadJson, enqueue.PayloadType);
             }
             else if (payload is NmqEnqueueQuery enqueueQuery)
             {
-                EqueueQuery(connectionId, enqueueQuery.QueueName, enqueueQuery.QueryId, enqueueQuery.Payload, enqueueQuery.PayloadType, enqueueQuery.ReplyType);
+                EqueueQuery(connectionId, enqueueQuery.QueueName, enqueueQuery.QueryId, enqueueQuery.PayloadJson, enqueueQuery.PayloadType, enqueueQuery.ReplyType);
             }
             else if (payload is NmqEnqueueQueryReply enqueueQueryReply)
             {
-                EqueueQueryReply(connectionId, enqueueQueryReply.QueueName, enqueueQueryReply.QueryId, enqueueQueryReply.Payload, enqueueQueryReply.PayloadType, enqueueQueryReply.ReplyType);
+                EqueueQueryReply(connectionId, enqueueQueryReply.QueueName, enqueueQueryReply.QueryId, enqueueQueryReply.PayloadJson, enqueueQueryReply.PayloadType, enqueueQueryReply.ReplyType);
             }
             else if (payload is NmqDeleteQueue deleteQueue)
             {

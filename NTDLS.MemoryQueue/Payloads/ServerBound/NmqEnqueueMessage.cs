@@ -8,13 +8,13 @@ namespace NTDLS.MemoryQueue.Payloads.ServerBound
     internal class NmqEnqueueMessage : IFrameNotification
     {
         public string QueueName { get; set; }
-        public string Payload { get; set; }
+        public string PayloadJson { get; set; }
         public string PayloadType { get; set; }
 
-        public NmqEnqueueMessage(string queueName, string payload, string payloadType)
+        public NmqEnqueueMessage(string queueName, string payloadJson, string payloadType)
         {
             QueueName = queueName;
-            Payload = payload;
+            PayloadJson = payloadJson;
             PayloadType = payloadType;
         }
     }
