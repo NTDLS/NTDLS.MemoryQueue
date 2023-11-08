@@ -7,6 +7,7 @@ using NTDLS.StreamFraming.Payloads;
 using System.Diagnostics.CodeAnalysis;
 using System.Net;
 using System.Net.Sockets;
+using static NTDLS.MemoryQueue.MqTypes;
 
 namespace NTDLS.MemoryQueue
 {
@@ -67,21 +68,39 @@ namespace NTDLS.MemoryQueue
         /// <returns></returns>
         public delegate IMqQueryReply QueryReceivedEvent(MqClient client, IMqQuery query);
 
+        /// <summary>
+        /// Event fired a log entry needs to be recorded.
+        /// </summary>
+        public event ClientLogEvent? OnLog;
+        /// <summary>
+        /// Event fired a log entry needs to be recorded.
+        /// </summary>
+        /// <param name="client">The instance of the client that is calling the event.</param>
+        /// <param name="entry">The log entry that is being reported.</param>
+        public delegate void ClientLogEvent(MqClient client, MqLogEntry entry);
+
         #endregion
 
 
         private void EnsureConnected([NotNull] MqPeerConnection? activeConnection)
         {
-            if (activeConnection == null)
+            try
             {
-                throw new Exception("The client connection has not been established.");
-            }
+                if (activeConnection == null)
+                {
+                    throw new Exception("The client connection has not been established.");
+                }
 
-            if (activeConnection.IsHealthy)
+                if (activeConnection.IsHealthy == false)
+                {
+                    throw new Exception("The client is not connected.");
+                }
+            }
+            catch (Exception ex)
             {
-                throw new Exception("The client is not connected.");
+                OnLog?.Invoke(this, new MqLogEntry(ex));
+                throw;
             }
-
         }
 
         /// <summary>
@@ -145,29 +164,38 @@ namespace NTDLS.MemoryQueue
         {
             EnsureConnected(_activeConnection);
 
-            var waitingQuery = new MqQueryWaitingForReply();
-
-            _queriesWaitingForReply.Use((o)
-                => o.Add(waitingQuery.QueryId, waitingQuery));
-
-            var payloadJson = JsonConvert.SerializeObject(query);
-            var payloadType = query.GetType().AssemblyQualifiedName ?? throw new Exception("The query type could not be determined.");
-            var replyType = typeof(T).AssemblyQualifiedName ?? throw new Exception("The reply type could not be determined.");
-
-            _activeConnection.SendNotification(new MqEnqueueQuery(queueName, waitingQuery.QueryId, payloadJson, payloadType, replyType));
-
-            return await Task.Run(() =>
+            try
             {
-                if (waitingQuery.Waiter.WaitOne(secondsTimeout * 1000))
-                {
-                    return JsonConvert.DeserializeObject<T>(waitingQuery.PayloadJson ?? string.Empty);
-                }
+
+                var waitingQuery = new MqQueryWaitingForReply();
 
                 _queriesWaitingForReply.Use((o)
-                    => o.Remove(waitingQuery.QueryId));
+                    => o.Add(waitingQuery.QueryId, waitingQuery));
 
-                throw new Exception("Query timeout expired.");
-            });
+                var payloadJson = JsonConvert.SerializeObject(query);
+                var payloadType = query.GetType().AssemblyQualifiedName ?? throw new Exception("The query type could not be determined.");
+                var replyType = typeof(T).AssemblyQualifiedName ?? throw new Exception("The reply type could not be determined.");
+
+                _activeConnection.SendNotification(new MqEnqueueQuery(queueName, waitingQuery.QueryId, payloadJson, payloadType, replyType));
+
+                return await Task.Run(() =>
+                {
+                    if (waitingQuery.Waiter.WaitOne(secondsTimeout * 1000))
+                    {
+                        return JsonConvert.DeserializeObject<T>(waitingQuery.PayloadJson ?? string.Empty);
+                    }
+
+                    _queriesWaitingForReply.Use((o)
+                        => o.Remove(waitingQuery.QueryId));
+
+                    throw new Exception("Query timeout expired.");
+                });
+            }
+            catch (Exception ex)
+            {
+                OnLog?.Invoke(this, new MqLogEntry(ex));
+                throw;
+            }
         }
 
         /// <summary>
@@ -248,51 +276,59 @@ namespace NTDLS.MemoryQueue
 
         void IMqMemoryQueue.InvokeOnNotificationReceived(Guid connectionId, IFrameNotification payload)
         {
-            if (payload is MqClientBoundMessage clientBoundMessage)
+            try
             {
-                if (OnMessageReceived == null)
+                if (payload is MqClientBoundMessage clientBoundMessage)
                 {
-                    throw new Exception("The client bound notification event is not handled.");
-                }
-
-                var message = Utility.ExtractGenericType<IMqMessage>(clientBoundMessage.PayloadJson, clientBoundMessage.PayloadType);
-
-                OnMessageReceived.Invoke(this, message);
-            }
-            else if (payload is MqClientBoundQuery clientBoundQuery)
-            {
-                if (OnQueryReceived == null)
-                {
-                    throw new Exception("The client bound query event is not handled.");
-                }
-
-                var query = Utility.ExtractGenericType<IMqQuery>(clientBoundQuery.PayloadJson, clientBoundQuery.PayloadType);
-
-                var queryResultPayload = OnQueryReceived.Invoke(this, query);
-
-                string replyPayloadJson = JsonConvert.SerializeObject(queryResultPayload);
-
-                EnqueueQueryReply(clientBoundQuery, replyPayloadJson, clientBoundQuery.PayloadType, clientBoundQuery.ReplyType);
-            }
-            else if (payload is MqClientBoundQueryReply clientBoundQueryReply)
-            {
-                _queriesWaitingForReply.Use((o) =>
-                {
-                    if (o.TryGetValue(clientBoundQueryReply.QueryId, out var waitingQuery))
+                    if (OnMessageReceived == null)
                     {
-                        waitingQuery.SetReplyPayload(clientBoundQueryReply.PayloadJson);
-                        waitingQuery.Waiter.Set();
-                        o.Remove(clientBoundQueryReply.QueryId);
+                        throw new Exception("The client bound notification event is not handled.");
                     }
-                    else
+
+                    var message = Utility.ExtractGenericType<IMqMessage>(clientBoundMessage.PayloadJson, clientBoundMessage.PayloadType);
+
+                    OnMessageReceived.Invoke(this, message);
+                }
+                else if (payload is MqClientBoundQuery clientBoundQuery)
+                {
+                    if (OnQueryReceived == null)
                     {
-                        //The query has already been answered by another connection or it has expired.
+                        throw new Exception("The client bound query event is not handled.");
                     }
-                });
+
+                    var query = Utility.ExtractGenericType<IMqQuery>(clientBoundQuery.PayloadJson, clientBoundQuery.PayloadType);
+
+                    var queryResultPayload = OnQueryReceived.Invoke(this, query);
+
+                    string replyPayloadJson = JsonConvert.SerializeObject(queryResultPayload);
+
+                    EnqueueQueryReply(clientBoundQuery, replyPayloadJson, clientBoundQuery.PayloadType, clientBoundQuery.ReplyType);
+                }
+                else if (payload is MqClientBoundQueryReply clientBoundQueryReply)
+                {
+                    _queriesWaitingForReply.Use((o) =>
+                    {
+                        if (o.TryGetValue(clientBoundQueryReply.QueryId, out var waitingQuery))
+                        {
+                            waitingQuery.SetReplyPayload(clientBoundQueryReply.PayloadJson);
+                            waitingQuery.Waiter.Set();
+                            o.Remove(clientBoundQueryReply.QueryId);
+                        }
+                        else
+                        {
+                            //The query has already been answered by another connection or it has expired.
+                            OnLog?.Invoke(this, new MqLogEntry(MqLogSeverity.Warning, $"The query with id '{clientBoundQueryReply.QueryId}' has alreay been answered or has expired."));
+                        }
+                    });
+                }
+                else
+                {
+                    throw new Exception("The client bound notification type is not implemented.");
+                }
             }
-            else
+            catch (Exception ex)
             {
-                throw new Exception("The client bound notification type is not implemented.");
+                OnLog?.Invoke(this, new MqLogEntry(ex));
             }
         }
     }

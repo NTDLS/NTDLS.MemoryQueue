@@ -185,38 +185,45 @@ namespace NTDLS.MemoryQueue
 
         void IMqMemoryQueue.InvokeOnNotificationReceived(Guid connectionId, IFrameNotification payload)
         {
-            //Intercept notifications to see if they are Client->Server commands.
-            if (payload is MqCreateQueue createQueue)
+            try
             {
-                CreateQueue(createQueue.Configuration);
+                //Intercept notifications to see if they are Client->Server commands.
+                if (payload is MqCreateQueue createQueue)
+                {
+                    CreateQueue(createQueue.Configuration);
+                }
+                else if (payload is MqDeleteQueue deleteQueue)
+                {
+                    DeleteQueue(deleteQueue.QueueName);
+                }
+                else if (payload is MqSubscribe subscribe)
+                {
+                    _qeueManager.Use((o) => o.Subscribe(connectionId, subscribe.QueueName));
+                }
+                else if (payload is MqUnsubscribe unsubscribe)
+                {
+                    _qeueManager.Use((o) => o.Unsubscribe(connectionId, unsubscribe.QueueName));
+                }
+                else if (payload is MqEnqueueMessage enqueue)
+                {
+                    _qeueManager.Use((o) => o.EqueueMessage(enqueue.QueueName, enqueue.PayloadJson, enqueue.PayloadType));
+                }
+                else if (payload is MqEnqueueQuery enqueueQuery)
+                {
+                    _qeueManager.Use((o) => o.EqueueQuery(connectionId, enqueueQuery.QueueName, enqueueQuery.QueryId, enqueueQuery.PayloadJson, enqueueQuery.PayloadType, enqueueQuery.ReplyType));
+                }
+                else if (payload is MqEnqueueQueryReply enqueueQueryReply)
+                {
+                    _qeueManager.Use((o) => o.EqueueQueryReply(connectionId, enqueueQueryReply.QueueName, enqueueQueryReply.QueryId, enqueueQueryReply.PayloadJson, enqueueQueryReply.PayloadType, enqueueQueryReply.ReplyType));
+                }
+                else
+                {
+                    throw new Exception("The server bound notification type is not implemented.");
+                }
             }
-            else if (payload is MqDeleteQueue deleteQueue)
+            catch (Exception ex)
             {
-                DeleteQueue(deleteQueue.QueueName);
-            }
-            else if (payload is MqSubscribe subscribe)
-            {
-                _qeueManager.Use((o) => o.Subscribe(connectionId, subscribe.QueueName));
-            }
-            else if (payload is MqUnsubscribe unsubscribe)
-            {
-                _qeueManager.Use((o) => o.Unsubscribe(connectionId, unsubscribe.QueueName));
-            }
-            else if (payload is MqEnqueueMessage enqueue)
-            {
-                _qeueManager.Use((o) => o.EqueueMessage(enqueue.QueueName, enqueue.PayloadJson, enqueue.PayloadType));
-            }
-            else if (payload is MqEnqueueQuery enqueueQuery)
-            {
-                _qeueManager.Use((o) => o.EqueueQuery(connectionId, enqueueQuery.QueueName, enqueueQuery.QueryId, enqueueQuery.PayloadJson, enqueueQuery.PayloadType, enqueueQuery.ReplyType));
-            }
-            else if (payload is MqEnqueueQueryReply enqueueQueryReply)
-            {
-                _qeueManager.Use((o) => o.EqueueQueryReply(connectionId, enqueueQueryReply.QueueName, enqueueQueryReply.QueryId, enqueueQueryReply.PayloadJson, enqueueQueryReply.PayloadType, enqueueQueryReply.ReplyType));
-            }
-            else
-            {
-                throw new Exception("The server bound notification type is not implemented.");
+                //TODO: log this.
             }
         }
     }

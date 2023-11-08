@@ -61,7 +61,7 @@ namespace NTDLS.MemoryQueue.Engine
                 {
                 }
             }
-            catch
+            catch (Exception ex)
             {
                 //TODO: log this.
             }
