@@ -14,7 +14,7 @@ namespace NTDLS.MemoryQueue.Engine
         public string Key { get; private set; }
         public NmqQueueConfiguration Configuration { get; private set; }
         public HashSet<Guid> Subscribers { get; private set; } = new();
-        public CriticalResource<List<NmqQueuedMessage>> Messages { get; private set; } = new();
+        public CriticalResource<List<INmqQueuedItem>> Messages { get; private set; } = new();
 
         public NmqQueue(NmqQueueManager queueManager, NmqQueueConfiguration config)
         {
@@ -38,6 +38,12 @@ namespace NTDLS.MemoryQueue.Engine
 
         public void AddMessage(string payload)
             => Messages.Use((o) => o.Add(new NmqQueuedMessage(payload)));
+
+        public void AddQuery(Guid originationId, Guid queryId, string payload)
+            => Messages.Use((o) => o.Add(new NmqQueuedQuery(originationId, queryId, payload)));
+
+        public void AddQueryReply(Guid originationId, Guid queryId, string payload)
+            => Messages.Use((o) => o.Add(new NmqQueuedQueryReply(originationId, queryId, payload)));
 
         public void Subscribe(Guid connectionId)
             => Subscribers.Add(connectionId);
@@ -76,7 +82,21 @@ namespace NTDLS.MemoryQueue.Engine
                     {
                         if (message.SatisfiedSubscribers.Contains(subscriber) == false) //Make sure we have not already sent this message to this subscriber. 
                         {
-                            _queueManager.Server.Notify(subscriber, new NmqBroadcastMessage(message));
+                            if (message is NmqQueuedMessage queuedMessage)
+                            {
+                                _queueManager.Server.Notify(subscriber, new NmqBroadcastMessage(queuedMessage.Payload));
+                            }
+                            else if (message is NmqQueuedQuery queuedQuery)
+                            {
+                                _queueManager.Server.Notify(subscriber, new NmqBroadcastQuery(Configuration.Name, queuedQuery.QueryId, queuedQuery.Payload));
+                            }
+                            else if (message is NmqQueuedQueryReply queuedQueryReply)
+                            {
+                                if (subscriber == queuedQueryReply.OriginationId) //Only send the reply to the connection that originated the query.
+                                {
+                                    _queueManager.Server.Notify(subscriber, new NmqBroadcastQueryReply(Configuration.Name, queuedQueryReply.OriginationId, queuedQueryReply.QueryId, queuedQueryReply.Payload));
+                                }
+                            }
                             message.SatisfiedSubscribers.Add(subscriber);
                         }
                     }

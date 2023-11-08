@@ -50,7 +50,9 @@ namespace NTDLS.ReliableMessaging
         public void DeleteQueue(Guid connectionId, string queueName) => _qeueManager.Use((o) => o.Delete(connectionId, queueName));
         public void Subscribe(Guid connectionId, string queueName) => _qeueManager.Use((o) => o.Subscribe(connectionId, queueName));
         public void Unsubscribe(Guid connectionId, string queueName) => _qeueManager.Use((o) => o.Unsubscribe(connectionId, queueName));
-        public void Equeue(Guid connectionId, string queueName, string payload) => _qeueManager.Use((o) => o.Equeue(connectionId, queueName, payload));
+        public void Equeue(string queueName, string payload) => _qeueManager.Use((o) => o.Equeue(queueName, payload));
+        public void EqueueQuery(Guid originationId, string queueName, Guid queryId, string payload) => _qeueManager.Use((o) => o.EqueueQuery(originationId, queueName, queryId, payload));
+        public void EqueueQueryReply(Guid originationId, string queueName, Guid queryId, string payload) => _qeueManager.Use((o) => o.EqueueQueryReply(originationId, queueName, queryId, payload));
 
         /// <summary>
         /// Starts the message server.
@@ -72,7 +74,7 @@ namespace NTDLS.ReliableMessaging
         /// <summary>
         /// Stops the message server.
         /// </summary>
-        public void Stop()
+        public void Shutdown()
         {
             if (_keepRunning == false)
             {
@@ -193,7 +195,15 @@ namespace NTDLS.ReliableMessaging
             }
             else if (payload is NmqEnqueue enqueue)
             {
-                Equeue(connectionId, enqueue.QueueName, enqueue.Payload);
+                Equeue(enqueue.QueueName, enqueue.Payload);
+            }
+            else if (payload is NmqEnqueueQuery enqueueQuery)
+            {
+                EqueueQuery(connectionId, enqueueQuery.QueueName, enqueueQuery.QueryId, enqueueQuery.Payload);
+            }
+            else if (payload is NmqEnqueueQueryReply enqueueQueryReply)
+            {
+                EqueueQueryReply(connectionId, enqueueQueryReply.QueueName, enqueueQueryReply.QueryId, enqueueQueryReply.Payload);
             }
             else if (payload is NmqDeleteQueue deleteQueue)
             {
@@ -203,18 +213,6 @@ namespace NTDLS.ReliableMessaging
             {
                 throw new Exception("The server bound notification is not implemented .");
             }
-        }
-
-        IFrameQueryReply IMessageHub.InvokeOnQueryReceived(Guid connectionId, IFrameQuery payload)
-        {
-            /*
-            if (OnQueryReceived == null)
-            {
-                throw new Exception("The query hander event was not handled.");
-            }
-            return OnQueryReceived.Invoke(this, connectionId, payload);
-            */
-            throw new Exception("Queries are not implemented.");
         }
     }
 }

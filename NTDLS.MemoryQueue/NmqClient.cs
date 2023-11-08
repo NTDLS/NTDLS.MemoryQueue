@@ -1,5 +1,7 @@
-﻿using NTDLS.MemoryQueue.Payloads;
+﻿using NTDLS.MemoryQueue.Engine;
+using NTDLS.MemoryQueue.Payloads;
 using NTDLS.MemoryQueue.Payloads.InternalCommunication;
+using NTDLS.Semaphore;
 using NTDLS.StreamFraming.Payloads;
 using System.Net;
 using System.Net.Sockets;
@@ -14,6 +16,7 @@ namespace NTDLS.ReliableMessaging
         private readonly TcpClient _tcpClient = new();
         private PeerConnection? _activeConnection;
         private bool _keepRunning;
+        private readonly CriticalResource<Dictionary<Guid, QueryWaitingForReply>> _queriesWaitingForReply = new();
 
         #region Events.
         /// <summary>
@@ -50,7 +53,7 @@ namespace NTDLS.ReliableMessaging
         /// <param name="payload"></param>
         public delegate void MessageReceivedEvent(NmqClient client, NmqMessageReceivedEventParam message);
 
-        /*
+
         /// <summary>
         /// Event fired when a query is received from a client.
         /// </summary>
@@ -62,8 +65,8 @@ namespace NTDLS.ReliableMessaging
         /// <param name="connectionId">The id of the client which send the query.</param>
         /// <param name="payload"></param>
         /// <returns></returns>
-        public delegate IFrameQueryReply QueryReceivedEvent(NmqClient client, Guid connectionId, IFrameQuery payload);
-        */
+        public delegate string QueryReceivedEvent(NmqClient client, NmqQueryReceivedEventParam query);
+
         #endregion
 
         public void CreateQueue(NmqQueueConfiguration configuration)
@@ -78,10 +81,36 @@ namespace NTDLS.ReliableMessaging
             _activeConnection.SendNotification(new NmqDeleteQueue(queueName));
         }
 
-        public void Enqueue(string queueName, string text)
+        public void Enqueue(string queueName, string payload)
         {
             Utility.EnsureNotNull(_activeConnection);
-            _activeConnection.SendNotification(new NmqEnqueue(queueName, text));
+            _activeConnection.SendNotification(new NmqEnqueue(queueName, payload));
+        }
+
+        private void EnqueueQueryReply(NmqBroadcastQuery query, string payload)
+        {
+            Utility.EnsureNotNull(_activeConnection);
+            _activeConnection.SendNotification(new NmqEnqueueQueryReply(query.QueueName, query.QueryId, payload));
+        }
+
+        public async Task<string?> Query(string queueName, string payload)
+        {
+            Utility.EnsureNotNull(_activeConnection);
+
+            var waitingQuery = new QueryWaitingForReply();
+
+            _queriesWaitingForReply.Use((o) =>
+            {
+                o.Add(waitingQuery.QueryId, waitingQuery);
+            });
+
+            _activeConnection.SendNotification(new NmqEnqueueQuery(queueName, waitingQuery.QueryId, payload));
+
+            return await Task.Run(() =>
+            {
+                waitingQuery.Waiter.WaitOne();
+                return waitingQuery.Payload;
+            });
         }
 
         public void Subscribe(string queueName)
@@ -141,6 +170,7 @@ namespace NTDLS.ReliableMessaging
             _activeConnection?.Disconnect(true);
         }
 
+        /*
         /// <summary>
         /// Dispatches a one way notification to the connected server.
         /// </summary>
@@ -150,7 +180,9 @@ namespace NTDLS.ReliableMessaging
             Utility.EnsureNotNull(_activeConnection);
             _activeConnection.SendNotification(notification);
         }
+        */
 
+        /*
         /// <summary>
         /// Sends a query to the specified client and expects a reply.
         /// </summary>
@@ -163,6 +195,7 @@ namespace NTDLS.ReliableMessaging
             Utility.EnsureNotNull(_activeConnection);
             return await _activeConnection.SendQuery<T>(query);
         }
+        */
 
         void IMessageHub.InvokeOnConnected(Guid connectionId)
         {
@@ -184,25 +217,49 @@ namespace NTDLS.ReliableMessaging
                     throw new Exception("The notification message hander event was not handled.");
                 }
 
-                var clientNotificationMessage = new NmqMessageReceivedEventParam()
+                var param = new NmqMessageReceivedEventParam()
                 {
                     Payload = broadcastMessage.Payload
                 };
 
-                OnMessageReceived.Invoke(this, clientNotificationMessage);
+                OnMessageReceived.Invoke(this, param);
+            }
+            else if (payload is NmqBroadcastQuery broadcastQuery)
+            {
+                if (OnQueryReceived == null)
+                {
+                    throw new Exception("The query message hander event was not handled.");
+                }
+
+                var param = new NmqQueryReceivedEventParam()
+                {
+                    Payload = broadcastQuery.Payload
+                };
+
+                var queryResultPayload = OnQueryReceived.Invoke(this, param);
+
+                EnqueueQueryReply(broadcastQuery, queryResultPayload);
+            }
+            else if (payload is NmqBroadcastQueryReply broadcastQueryReply)
+            {
+                _queriesWaitingForReply.Use((o) =>
+                {
+                    if (o.TryGetValue(broadcastQueryReply.QueryId, out var waitingQuery))
+                    {
+                        waitingQuery.SetReplyPayload(broadcastQueryReply.Payload);
+                        waitingQuery.Waiter.Set();
+                        o.Remove(broadcastQueryReply.QueryId);
+                    }
+                    else
+                    {
+                        //The query has already been answered by another client or it has expired.
+                    }
+                });
             }
             else
             {
+                throw new Exception("The client notification container is unsupported.");
             }
-        }
-
-        IFrameQueryReply IMessageHub.InvokeOnQueryReceived(Guid connectionId, IFrameQuery payload)
-        {
-            //if (OnQueryReceived == null)
-            //{
-            throw new Exception("The query hander event was not handled.");
-            //}
-            //return OnQueryReceived.Invoke(this, connectionId, payload);
         }
     }
 }

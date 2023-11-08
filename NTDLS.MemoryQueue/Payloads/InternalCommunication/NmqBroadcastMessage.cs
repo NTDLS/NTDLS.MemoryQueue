@@ -1,5 +1,4 @@
-﻿using NTDLS.MemoryQueue.Engine;
-using NTDLS.StreamFraming.Payloads;
+﻿using NTDLS.StreamFraming.Payloads;
 
 namespace NTDLS.MemoryQueue.Payloads.InternalCommunication
 {
@@ -11,9 +10,9 @@ namespace NTDLS.MemoryQueue.Payloads.InternalCommunication
         {
         }
 
-        public NmqBroadcastMessage(NmqQueuedMessage message)
+        public NmqBroadcastMessage(string payload)
         {
-            Payload = message.Payload;
+            Payload = payload;
         }
     }
 }

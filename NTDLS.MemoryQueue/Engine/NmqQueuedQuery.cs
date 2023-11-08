@@ -1,7 +1,12 @@
 ﻿namespace NTDLS.MemoryQueue.Engine
 {
-    internal class NmqQueuedMessage : INmqQueuedItem
+    internal class NmqQueuedQuery : INmqQueuedItem
     {
+        /// <summary>
+        /// The ID of the client connection that expects a response to this query.
+        /// </summary>
+        public Guid OriginationId { get; set; }
+        public Guid QueryId { get; set; }
         public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
         public string Payload { get; private set; } = string.Empty;
 
@@ -10,12 +15,14 @@
         /// </summary>
         public HashSet<Guid> SatisfiedSubscribers { get; set; } = new();
 
-        public NmqQueuedMessage(string payload)
+        public NmqQueuedQuery(Guid originationId, Guid queryId, string payload)
         {
+            OriginationId = originationId;
+            QueryId = queryId;
             Payload = payload;
         }
 
-        public NmqQueuedMessage()
+        public NmqQueuedQuery()
         {
         }
     }

@@ -42,9 +42,7 @@ namespace NTDLS.ReliableMessaging
 
             try
             {
-                while (_keepRunning && _stream.ReadAndProcessFrames(_frameBuffer,
-                    (payload) => _hub.InvokeOnNotificationReceived(Id, payload),
-                    (payload) => _hub.InvokeOnQueryReceived(Id, payload)))
+                while (_keepRunning && _stream.ReadAndProcessFrames(_frameBuffer, (payload) => _hub.InvokeOnNotificationReceived(Id, payload)))
                 {
                 }
             }

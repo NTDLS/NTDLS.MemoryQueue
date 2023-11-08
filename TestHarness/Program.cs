@@ -40,32 +40,62 @@ namespace TestHarness
         }
         */
 
-        static void Main()
+        static NmqServer PropupServer()
         {
             var server = new NmqServer();
             //server.CreateQueue(new NmqConfiguration("MyFirstQueue"));
             server.Start(45784);
 
+            return server;
+        }
+
+        static NmqClient PropupClient()
+        {
             //Start a client and connect to the server.
             var client = new NmqClient();
+
             client.OnMessageReceived += (NmqClient client, NmqMessageReceivedEventParam message) =>
             {
                 Console.WriteLine($"Client received message from server: {message.Payload}");
             };
 
-            client.Connect("localhost", 45784);
+            client.OnQueryReceived += (NmqClient client, NmqQueryReceivedEventParam query) =>
+            {
+                if (query.Payload == "Ping!")
+                {
+                    return "Pong!";
+                }
+                return "Unhandled query.";
+            };
 
+            client.Connect("localhost", 45784);
             client.CreateQueue(new NmqQueueConfiguration("MyFirstQueue"));
             client.Subscribe("MyFirstQueue");
 
             client.Enqueue("MyFirstQueue", "This is my message");
+
+            client.Query("MyFirstQueue", "Ping!").ContinueWith((o) =>
+            {
+                if (o.IsCompletedSuccessfully)
+                {
+                    Console.WriteLine($"Query Reply: {o.Result}");
+                }
+            });
+
+            return client;
+        }
+
+        static void Main()
+        {
+            var server = PropupServer();
+            var client = PropupClient();
 
             Console.WriteLine("Press [enter] to shutdown.");
             Console.ReadLine();
 
             //CLeanup.
             client.Disconnect();
-            server.Stop();
+            server.Shutdown();
 
             /*
             //Start a server and add a "query received" and "notification received" event handler.
