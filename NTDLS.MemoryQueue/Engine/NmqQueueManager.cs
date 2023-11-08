@@ -22,7 +22,6 @@ namespace NTDLS.MemoryQueue.Engine
             }
         }
 
-
         public void Subscribe(Guid connectionId, string queueName)
         {
             if (TryGet(queueName, out var queue) == false)
@@ -62,6 +61,15 @@ namespace NTDLS.MemoryQueue.Engine
 
             var queue = new NmqQueue(this, config);
             Queues.Add(queue);
+        }
+
+        public void Delete(Guid connectionId, string queueName)
+        {
+            if (TryGet(queueName, out var queue))
+            {
+                queue.Shutdown(true);
+                Queues.Remove(queue);
+            }
         }
 
         public bool TryGet(string key, [NotNullWhen(true)] out NmqQueue? outQueu)

@@ -44,34 +44,10 @@ namespace NTDLS.ReliableMessaging
         /// <param name="connectionId">The id of the client which was disconnected.</param>
         public delegate void DisconnectedEvent(NmqServer server, Guid connectionId);
 
-        /// <summary>
-        /// Event fired when a notification is received from a client.
-        /// </summary>
-        public event NotificationReceivedEvent? OnNotificationReceived;
-        /// <summary>
-        /// Event fired when a notification is received from a client.
-        /// </summary>
-        /// <param name="server">The instance of the server that is calling the event.</param>
-        /// <param name="connectionId">The id of the client which send the notification.</param>
-        /// <param name="payload"></param>
-        public delegate void NotificationReceivedEvent(NmqServer server, Guid connectionId, IFrameNotification payload);
-
-        /// <summary>
-        /// Event fired when a query is received from a client.
-        /// </summary>
-        public event QueryReceivedEvent? OnQueryReceived;
-        /// <summary>
-        /// Event fired when a query is received from a client.
-        /// </summary>
-        /// <param name="server">The instance of the server that is calling the event.</param>
-        /// <param name="connectionId">The id of the client which send the query.</param>
-        /// <param name="payload"></param>
-        /// <returns></returns>
-        public delegate IFrameQueryReply QueryReceivedEvent(NmqServer server, Guid connectionId, IFrameQuery payload);
-
         #endregion
 
         public void CreateQueue(NmqQueueConfiguration config) => _qeueManager.Use((o) => o.Add(config));
+        public void DeleteQueue(Guid connectionId, string queueName) => _qeueManager.Use((o) => o.Delete(connectionId, queueName));
         public void Subscribe(Guid connectionId, string queueName) => _qeueManager.Use((o) => o.Subscribe(connectionId, queueName));
         public void Unsubscribe(Guid connectionId, string queueName) => _qeueManager.Use((o) => o.Unsubscribe(connectionId, queueName));
         public void Equeue(Guid connectionId, string queueName, string payload) => _qeueManager.Use((o) => o.Equeue(connectionId, queueName, payload));
@@ -219,23 +195,26 @@ namespace NTDLS.ReliableMessaging
             {
                 Equeue(connectionId, enqueue.QueueName, enqueue.Payload);
             }
+            else if (payload is NmqDeleteQueue deleteQueue)
+            {
+                DeleteQueue(connectionId, deleteQueue.QueueName);
+            }
             else
             {
-                if (OnNotificationReceived == null)
-                {
-                    throw new Exception("The notification hander event was not handled.");
-                }
-                OnNotificationReceived.Invoke(this, connectionId, payload);
+                throw new Exception("The server bound notification is not implemented .");
             }
         }
 
         IFrameQueryReply IMessageHub.InvokeOnQueryReceived(Guid connectionId, IFrameQuery payload)
         {
+            /*
             if (OnQueryReceived == null)
             {
                 throw new Exception("The query hander event was not handled.");
             }
             return OnQueryReceived.Invoke(this, connectionId, payload);
+            */
+            throw new Exception("Queries are not implemented.");
         }
     }
 }

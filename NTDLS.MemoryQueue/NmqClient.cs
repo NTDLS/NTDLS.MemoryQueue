@@ -72,6 +72,12 @@ namespace NTDLS.ReliableMessaging
             _activeConnection.SendNotification(new NmqCreateQueue(configuration));
         }
 
+        public void DeleteQueue(string queueName)
+        {
+            Utility.EnsureNotNull(_activeConnection);
+            _activeConnection.SendNotification(new NmqDeleteQueue(queueName));
+        }
+
         public void Enqueue(string queueName, string text)
         {
             Utility.EnsureNotNull(_activeConnection);
