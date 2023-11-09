@@ -10,6 +10,11 @@ namespace ChatServer
 
             server.Start(45784);
 
+            server.OnLog += (IMqMemoryQueue client, MqLogEntry entry) =>
+            {
+                Console.WriteLine($"{entry.Severity} {entry.Message}");
+            };
+
             Console.WriteLine("Press [enter] to shutdown.");
             Console.ReadLine();
 
