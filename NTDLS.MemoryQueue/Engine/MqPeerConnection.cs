@@ -10,7 +10,7 @@ namespace NTDLS.MemoryQueue.Engine
         private readonly TcpClient _tcpClient; //The TCP/IP connection associated with this connection.
         private readonly Thread _dataPumpThread; //The thread that receives data for this connection.
         private readonly NetworkStream _stream; //The stream for the TCP/IP connection (used for reading and writing).
-        private readonly IMqMemoryQueue _hub;
+        private readonly IMqMemoryQueue _memoryQueue;
         private bool _keepRunning;
 
         public Guid Id { get; private set; }
@@ -30,10 +30,10 @@ namespace NTDLS.MemoryQueue.Engine
             }
         }
 
-        public MqPeerConnection(IMqMemoryQueue hub, TcpClient tcpClient)
+        public MqPeerConnection(IMqMemoryQueue memoryQueue, TcpClient tcpClient)
         {
             Id = Guid.NewGuid();
-            _hub = hub;
+            _memoryQueue = memoryQueue;
             _tcpClient = tcpClient;
             _dataPumpThread = new Thread(DataPumpThreadProc);
             _keepRunning = true;
@@ -41,14 +41,42 @@ namespace NTDLS.MemoryQueue.Engine
         }
 
         public void SendNotification(IFrameNotification notification)
-            => _stream.WriteNotification(notification);
+        {
+            try
+            {
+                _stream.WriteNotification(notification);
+            }
+            catch (Exception ex)
+            {
+                _memoryQueue.WriteLog(_memoryQueue, new MqLogEntry(ex));
+                throw;
+            }
+        }
 
         public Task<T> SendQuery<T>(IFrameQuery query) where T : IFrameQueryReply
-            => _stream.WriteQuery<T>(query);
+        {
+            try
+            {
+                return _stream.WriteQuery<T>(query);
+            }
+            catch (Exception ex)
+            {
+                _memoryQueue.WriteLog(_memoryQueue, new MqLogEntry(ex));
+                throw;
+            }
+        }
 
         public void RunAsync()
         {
-            _dataPumpThread.Start();
+            try
+            {
+                _dataPumpThread.Start();
+            }
+            catch (Exception ex)
+            {
+                _memoryQueue.WriteLog(_memoryQueue, new MqLogEntry(ex));
+                throw;
+            }
         }
 
         internal void DataPumpThreadProc()
@@ -58,35 +86,44 @@ namespace NTDLS.MemoryQueue.Engine
             try
             {
                 while (_keepRunning && _stream.ReadAndProcessFrames(_frameBuffer,
-                    (payload) => _hub.InvokeOnNotificationReceived(Id, payload),
-                    (payload) => _hub.InvokeOnQueryReceived(Id, payload))
-                    
+                    (payload) => _memoryQueue.InvokeOnNotificationReceived(Id, payload),
+                    (payload) => _memoryQueue.InvokeOnQueryReceived(Id, payload))
+
                     )
                 {
                 }
             }
             catch (Exception ex)
             {
-                //TODO: log this.
+                _memoryQueue.WriteLog(_memoryQueue, new MqLogEntry(ex));
+                throw;
             }
 
-            _hub.InvokeOnDisconnected(Id);
+            _memoryQueue.InvokeOnDisconnected(Id);
         }
 
         public void Disconnect(bool waitOnThread)
         {
-            if (_keepRunning)
+            try
             {
-                _keepRunning = false;
-                try { _stream.Close(); } catch { }
-                try { _stream.Dispose(); } catch { }
-                try { _tcpClient.Close(); } catch { }
-                try { _tcpClient.Dispose(); } catch { }
-
-                if (waitOnThread)
+                if (_keepRunning)
                 {
-                    _dataPumpThread.Join();
+                    _keepRunning = false;
+                    try { _stream.Close(); } catch { }
+                    try { _stream.Dispose(); } catch { }
+                    try { _tcpClient.Close(); } catch { }
+                    try { _tcpClient.Dispose(); } catch { }
+
+                    if (waitOnThread)
+                    {
+                        _dataPumpThread.Join();
+                    }
                 }
+            }
+            catch (Exception ex)
+            {
+                _memoryQueue.WriteLog(_memoryQueue, new MqLogEntry(ex));
+                throw;
             }
         }
     }

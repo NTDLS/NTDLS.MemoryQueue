@@ -72,15 +72,22 @@ namespace NTDLS.MemoryQueue
         /// <summary>
         /// Event fired a log entry needs to be recorded.
         /// </summary>
-        public event ClientLogEvent? OnLog;
+        public event LogEvent? OnLog;
         /// <summary>
         /// Event fired a log entry needs to be recorded.
         /// </summary>
-        /// <param name="client">The instance of the client that is calling the event.</param>
+        /// <param name="sender">The instance of the client that is calling the event.</param>
         /// <param name="entry">The log entry that is being reported.</param>
-        public delegate void ClientLogEvent(MqClient client, MqLogEntry entry);
+        public delegate void LogEvent(IMqMemoryQueue sender, MqLogEntry entry);
 
         #endregion
+
+        /// <summary>
+        /// Writes an event to the log.
+        /// </summary>
+        /// <param name="sender">The memory queue (client or server) that is writing the event.</param>
+        /// <param name="entry">The event which is to be recorded.</param>
+        private void WriteLog(IMqMemoryQueue sender, MqLogEntry entry) => OnLog?.Invoke(sender, entry);
 
         private void EnsureConnected([NotNull] MqPeerConnection? activeConnection)
         {
@@ -98,7 +105,7 @@ namespace NTDLS.MemoryQueue
             }
             catch (Exception ex)
             {
-                OnLog?.Invoke(this, new MqLogEntry(ex));
+                WriteLog(this, new MqLogEntry(ex));
                 throw;
             }
         }
@@ -110,12 +117,20 @@ namespace NTDLS.MemoryQueue
         /// <param name="timeoutSeconds">The number of seconds to wait on the operation to be acknoledged by the server.</param>
         public void CreateQueue(MqQueueConfiguration configuration, int timeoutSeconds = 30)
         {
-            EnsureConnected(_activeConnection);
-
-            if (!_activeConnection.SendQuery<MqInternalQueryReplyBoolean>(new MqCreateQueue(configuration))
-                .ContinueWith(TestAsyncResult).Wait(timeoutSeconds * 1000))
+            try
             {
-                throw new Exception("The operation timed-out.");
+                EnsureConnected(_activeConnection);
+
+                if (!_activeConnection.SendQuery<MqInternalQueryReplyBoolean>(new MqCreateQueue(configuration))
+                    .ContinueWith((o) => MqInternalQueryReplyBoolean.AssertTask(o)).Wait(timeoutSeconds * 1000))
+                {
+                    throw new Exception("The operation timed-out.");
+                }
+            }
+            catch (Exception ex)
+            {
+                WriteLog(this, new MqLogEntry(ex));
+                throw;
             }
         }
 
@@ -126,12 +141,20 @@ namespace NTDLS.MemoryQueue
         /// <param name="timeoutSeconds">The number of seconds to wait on the operation to be acknoledged by the server.</param>
         public void DeleteQueue(string queueName, int timeoutSeconds = 30)
         {
-            EnsureConnected(_activeConnection);
-
-            if (!_activeConnection.SendQuery<MqInternalQueryReplyBoolean>(new MqDeleteQueue(queueName))
-                .ContinueWith(TestAsyncResult).Wait(timeoutSeconds * 1000))
+            try
             {
-                throw new Exception("The operation timed-out.");
+                EnsureConnected(_activeConnection);
+
+                if (!_activeConnection.SendQuery<MqInternalQueryReplyBoolean>(new MqDeleteQueue(queueName))
+                    .ContinueWith((o) => MqInternalQueryReplyBoolean.AssertTask(o)).Wait(timeoutSeconds * 1000))
+                {
+                    throw new Exception("The operation timed-out.");
+                }
+            }
+            catch (Exception ex)
+            {
+                WriteLog(this, new MqLogEntry(ex));
+                throw;
             }
         }
 
@@ -144,15 +167,23 @@ namespace NTDLS.MemoryQueue
         /// <exception cref="Exception"></exception>
         public void EnqueueMessage(string queueName, IMqMessage message, int timeoutSeconds = 30)
         {
-            EnsureConnected(_activeConnection);
-
-            var payloadJson = JsonConvert.SerializeObject(message);
-            var payloadType = message.GetType().AssemblyQualifiedName ?? throw new Exception("The message type could not be determined.");
-
-            if (!_activeConnection.SendQuery<MqInternalQueryReplyBoolean>(new MqEnqueueMessage(queueName, payloadJson, payloadType))
-                .ContinueWith(TestAsyncResult).Wait(timeoutSeconds * 1000))
+            try
             {
-                throw new Exception("The operation timed-out.");
+                EnsureConnected(_activeConnection);
+
+                var payloadJson = JsonConvert.SerializeObject(message);
+                var payloadType = message.GetType().AssemblyQualifiedName ?? throw new Exception("The message type could not be determined.");
+
+                if (!_activeConnection.SendQuery<MqInternalQueryReplyBoolean>(new MqEnqueueMessage(queueName, payloadJson, payloadType))
+                    .ContinueWith((o) => MqInternalQueryReplyBoolean.AssertTask(o)).Wait(timeoutSeconds * 1000))
+                {
+                    throw new Exception("The operation timed-out.");
+                }
+            }
+            catch (Exception ex)
+            {
+                WriteLog(this, new MqLogEntry(ex));
+                throw;
             }
         }
 
@@ -166,12 +197,20 @@ namespace NTDLS.MemoryQueue
         /// <param name="timeoutSeconds">The number of seconds to wait on the operation to be acknoledged by the server.</param>
         private void EnqueueQueryReply(MqClientBoundQuery query, string payloadJson, string payloadType, string replyType, int timeoutSeconds = 30)
         {
-            EnsureConnected(_activeConnection);
-
-            if (!_activeConnection.SendQuery<MqInternalQueryReplyBoolean>(new MqEnqueueQueryReply(query.QueueName, query.QueryId, payloadJson, payloadType, replyType))
-                .ContinueWith(TestAsyncResult).Wait(timeoutSeconds * 1000))
+            try
             {
-                throw new Exception("The operation timed-out.");
+                EnsureConnected(_activeConnection);
+
+                if (!_activeConnection.SendQuery<MqInternalQueryReplyBoolean>(new MqEnqueueQueryReply(query.QueueName, query.QueryId, payloadJson, payloadType, replyType))
+                    .ContinueWith((o) => MqInternalQueryReplyBoolean.AssertTask(o)).Wait(timeoutSeconds * 1000))
+                {
+                    throw new Exception("The operation timed-out.");
+                }
+            }
+            catch (Exception ex)
+            {
+                WriteLog(this, new MqLogEntry(ex));
+                throw;
             }
         }
 
@@ -186,10 +225,10 @@ namespace NTDLS.MemoryQueue
         /// <exception cref="Exception"></exception>
         public async Task<T?> EnqueueQuery<T>(string queueName, IMqQuery query, int timeoutSeconds = 30) where T : IMqQueryReply
         {
-            EnsureConnected(_activeConnection);
-
             try
             {
+                EnsureConnected(_activeConnection);
+
                 var waitingQuery = new MqQueryWaitingForReply();
 
                 _queriesWaitingForReply.Use((o)
@@ -200,7 +239,7 @@ namespace NTDLS.MemoryQueue
                 var replyType = typeof(T).AssemblyQualifiedName ?? throw new Exception("The reply type could not be determined.");
 
                 if (!_activeConnection.SendQuery<MqInternalQueryReplyBoolean>(new MqEnqueueQuery(queueName, waitingQuery.QueryId, payloadJson, payloadType, replyType))
-                    .ContinueWith(TestAsyncResult).Wait(timeoutSeconds * 1000))
+                    .ContinueWith((o) => MqInternalQueryReplyBoolean.AssertTask(o)).Wait(timeoutSeconds * 1000))
                 {
                     throw new Exception("The operation timed-out.");
                 }
@@ -220,7 +259,7 @@ namespace NTDLS.MemoryQueue
             }
             catch (Exception ex)
             {
-                OnLog?.Invoke(this, new MqLogEntry(ex));
+                WriteLog(this, new MqLogEntry(ex));
                 throw;
             }
         }
@@ -232,12 +271,20 @@ namespace NTDLS.MemoryQueue
         /// <param name="timeoutSeconds">The number of seconds to wait on the operation to be acknoledged by the server.</param>
         public void Subscribe(string queueName, int timeoutSeconds = 30)
         {
-            EnsureConnected(_activeConnection);
-
-            if (!_activeConnection.SendQuery<MqInternalQueryReplyBoolean>(new MqSubscribe(queueName))
-                .ContinueWith(TestAsyncResult).Wait(timeoutSeconds * 1000))
+            try
             {
-                throw new Exception("The operation timed-out.");
+                EnsureConnected(_activeConnection);
+
+                if (!_activeConnection.SendQuery<MqInternalQueryReplyBoolean>(new MqSubscribe(queueName))
+                    .ContinueWith((o) => MqInternalQueryReplyBoolean.AssertTask(o)).Wait(timeoutSeconds * 1000))
+                {
+                    throw new Exception("The operation timed-out.");
+                }
+            }
+            catch (Exception ex)
+            {
+                WriteLog(this, new MqLogEntry(ex));
+                throw;
             }
         }
 
@@ -248,12 +295,20 @@ namespace NTDLS.MemoryQueue
         /// <param name="timeoutSeconds">The number of seconds to wait on the operation to be acknoledged by the server.</param>
         public void Unsubscribe(string queueName, int timeoutSeconds = 30)
         {
-            EnsureConnected(_activeConnection);
-
-            if (!_activeConnection.SendQuery<MqInternalQueryReplyBoolean>(new MqUnsubscribe(queueName))
-                .ContinueWith(TestAsyncResult).Wait(timeoutSeconds * 1000))
+            try
             {
-                throw new Exception("The operation timed-out.");
+                EnsureConnected(_activeConnection);
+
+                if (!_activeConnection.SendQuery<MqInternalQueryReplyBoolean>(new MqUnsubscribe(queueName))
+                    .ContinueWith((o) => MqInternalQueryReplyBoolean.AssertTask(o)).Wait(timeoutSeconds * 1000))
+                {
+                    throw new Exception("The operation timed-out.");
+                }
+            }
+            catch (Exception ex)
+            {
+                WriteLog(this, new MqLogEntry(ex));
+                throw;
             }
         }
 
@@ -264,15 +319,23 @@ namespace NTDLS.MemoryQueue
         /// <param name="port">The listenr port of the message server.</param>
         public void Connect(string hostName, int port)
         {
-            if (_keepRunning)
+            try
             {
-                return;
-            }
-            _keepRunning = true;
+                if (_keepRunning)
+                {
+                    return;
+                }
+                _keepRunning = true;
 
-            _tcpClient.Connect(hostName, port);
-            _activeConnection = new MqPeerConnection(this, _tcpClient);
-            _activeConnection.RunAsync();
+                _tcpClient.Connect(hostName, port);
+                _activeConnection = new MqPeerConnection(this, _tcpClient);
+                _activeConnection.RunAsync();
+            }
+            catch (Exception ex)
+            {
+                WriteLog(this, new MqLogEntry(ex));
+                throw;
+            }
         }
 
         /// <summary>
@@ -282,15 +345,23 @@ namespace NTDLS.MemoryQueue
         /// <param name="port">The listen port of the message server.</param>
         public void Connect(IPAddress ipAddress, int port)
         {
-            if (_keepRunning)
+            try
             {
-                return;
-            }
-            _keepRunning = true;
+                if (_keepRunning)
+                {
+                    return;
+                }
+                _keepRunning = true;
 
-            _tcpClient.Connect(ipAddress, port);
-            _activeConnection = new MqPeerConnection(this, _tcpClient);
-            _activeConnection.RunAsync();
+                _tcpClient.Connect(ipAddress, port);
+                _activeConnection = new MqPeerConnection(this, _tcpClient);
+                _activeConnection.RunAsync();
+            }
+            catch (Exception ex)
+            {
+                WriteLog(this, new MqLogEntry(ex));
+                throw;
+            }
         }
 
         /// <summary>
@@ -298,19 +369,43 @@ namespace NTDLS.MemoryQueue
         /// </summary>
         public void Disconnect()
         {
-            _keepRunning = false;
-            _activeConnection?.Disconnect(true);
+            try
+            {
+                _keepRunning = false;
+                _activeConnection?.Disconnect(true);
+            }
+            catch (Exception ex)
+            {
+                WriteLog(this, new MqLogEntry(ex));
+                throw;
+            }
         }
 
         void IMqMemoryQueue.InvokeOnConnected(Guid connectionId)
         {
-            OnConnected?.Invoke(this, connectionId);
+            try
+            {
+                OnConnected?.Invoke(this, connectionId);
+            }
+            catch (Exception ex)
+            {
+                WriteLog(this, new MqLogEntry(ex));
+                throw;
+            }
         }
 
         void IMqMemoryQueue.InvokeOnDisconnected(Guid connectionId)
         {
-            _activeConnection = null;
-            OnDisconnected?.Invoke(this, connectionId);
+            try
+            {
+                _activeConnection = null;
+                OnDisconnected?.Invoke(this, connectionId);
+            }
+            catch (Exception ex)
+            {
+                WriteLog(this, new MqLogEntry(ex));
+                throw;
+            }
         }
 
         void IMqMemoryQueue.InvokeOnNotificationReceived(Guid connectionId, IFrameNotification payload)
@@ -356,7 +451,7 @@ namespace NTDLS.MemoryQueue
                         else
                         {
                             //The query has already been answered by another connection or it has expired.
-                            OnLog?.Invoke(this, new MqLogEntry(MqLogSeverity.Warning, $"The query with id '{clientBoundQueryReply.QueryId}' has alreay been answered or has expired."));
+                            WriteLog(this, new MqLogEntry(MqLogSeverity.Warning, $"The query with id '{clientBoundQueryReply.QueryId}' has alreay been answered or has expired."));
                         }
                     });
                 }
@@ -367,32 +462,32 @@ namespace NTDLS.MemoryQueue
             }
             catch (Exception ex)
             {
-                OnLog?.Invoke(this, new MqLogEntry(ex));
+                WriteLog(this, new MqLogEntry(ex));
+                throw;
             }
         }
 
         IFrameQueryReply IMqMemoryQueue.InvokeOnQueryReceived(Guid connectionId, IFrameQuery payload)
         {
-            throw new Exception("The client bound query type is not implemented.");
+            try
+            {
+                throw new Exception("The client bound query type is not implemented.");
+            }
+            catch (Exception ex)
+            {
+                WriteLog(this, new MqLogEntry(ex));
+                throw;
+            }
         }
 
-        private void TestAsyncResult(Task<MqInternalQueryReplyBoolean> o)
+        /// <summary>
+        /// Writes an event to the log.
+        /// </summary>
+        /// <param name="sender">The memory queue (client or server) that is writing the event.</param>
+        /// <param name="entry">The event which is to be recorded.</param>
+        void IMqMemoryQueue.WriteLog(IMqMemoryQueue sender, MqLogEntry entry)
         {
-            if (o.Exception != null)
-            {
-                throw new Exception($"The task failed. Exception: {o.Exception}");
-            }
-            else if (o.IsCompletedSuccessfully)
-            {
-                if (o.Result.Value != true)
-                {
-                    throw new Exception($"The task failed. Exception: {o.Result.Message}");
-                }
-            }
-            else
-            {
-                throw new Exception($"The task failed with an unknown exception.");
-            }
+            OnLog?.Invoke(sender, entry);
         }
     }
 }

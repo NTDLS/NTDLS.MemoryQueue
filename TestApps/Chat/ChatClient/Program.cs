@@ -13,13 +13,12 @@ namespace ChatClient
 
             try
             {
-
                 client.Connect("localhost", 45784);
 
                 string queueName = "TestApps.Chat";
 
                 client.OnMessageReceived += Client_OnMessageReceived;
-                client.OnLog += (MqClient client, MqLogEntry entry) =>
+                client.OnLog += (IMqMemoryQueue client, MqLogEntry entry) =>
                 {
                     Console.WriteLine($"{entry.Severity} {entry.Message}");
                 };
