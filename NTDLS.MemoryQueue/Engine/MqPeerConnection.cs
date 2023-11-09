@@ -93,10 +93,23 @@ namespace NTDLS.MemoryQueue.Engine
                 {
                 }
             }
+            catch (SocketException ex)
+            {
+                if (ex.SocketErrorCode != SocketError.Interrupted
+                    && ex.SocketErrorCode != SocketError.Shutdown)
+                {
+                    _memoryQueue.WriteLog(_memoryQueue, new MqLogEntry(ex));
+                }
+            }
             catch (Exception ex)
             {
-                _memoryQueue.WriteLog(_memoryQueue, new MqLogEntry(ex));
-                throw;
+                if (ex.Message.Contains("forcibly closed"))
+                {
+                }
+                else
+                {
+                    _memoryQueue.WriteLog(_memoryQueue, new MqLogEntry(ex));
+                }
             }
 
             _memoryQueue.InvokeOnDisconnected(Id);

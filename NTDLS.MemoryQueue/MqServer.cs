@@ -187,6 +187,11 @@ namespace NTDLS.MemoryQueue
                     throw;
                 }
             }
+            catch (Exception ex)
+            {
+                WriteLog(this, new MqLogEntry(ex));
+                throw;
+            }
         }
 
         /// <summary>
