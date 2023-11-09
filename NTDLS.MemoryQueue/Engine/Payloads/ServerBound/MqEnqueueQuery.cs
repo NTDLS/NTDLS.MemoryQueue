@@ -5,7 +5,7 @@ namespace NTDLS.MemoryQueue.Engine.Payloads.ServerBound
     /// <summary>
     /// This is a enqueue query request that is sent from the client to the server.
     /// </summary>
-    internal class MqEnqueueQuery : IFrameNotification
+    internal class MqEnqueueQuery : IFrameQuery
     {
         public Guid QueryId { get; set; }
         public string QueueName { get; set; }

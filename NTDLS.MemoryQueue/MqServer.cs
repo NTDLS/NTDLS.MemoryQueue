@@ -1,4 +1,5 @@
 ﻿using NTDLS.MemoryQueue.Engine;
+using NTDLS.MemoryQueue.Engine.Payloads;
 using NTDLS.MemoryQueue.Engine.Payloads.ServerBound;
 using NTDLS.Semaphore;
 using NTDLS.StreamFraming.Payloads;
@@ -188,34 +189,59 @@ namespace NTDLS.MemoryQueue
             try
             {
                 //Intercept notifications to see if they are Client->Server commands.
-                if (payload is MqCreateQueue createQueue)
+
+                throw new Exception("The server bound notification type is not implemented.");
+            }
+            catch (Exception ex)
+            {
+                //TODO: log this.
+            }
+        }
+
+        IFrameQueryReply IMqMemoryQueue.InvokeOnQueryReceived(Guid connectionId, IFrameQuery payload)
+        {
+            try
+            {
+                //Intercept queries to see if they are Client->Server commands.
+
+                if (payload is MqSubscribe subscribe)
                 {
-                    CreateQueue(createQueue.Configuration);
+                    return MqInternalQueryReplyBoolean.Try(()
+                        => _qeueManager.Use((o) => o.Subscribe(connectionId, subscribe.QueueName)));
+                }
+                else if (payload is MqCreateQueue createQueue)
+                {
+                    return MqInternalQueryReplyBoolean.Try(()
+                        => CreateQueue(createQueue.Configuration));
                 }
                 else if (payload is MqDeleteQueue deleteQueue)
                 {
-                    DeleteQueue(deleteQueue.QueueName);
-                }
-                else if (payload is MqSubscribe subscribe)
-                {
-                    _qeueManager.Use((o) => o.Subscribe(connectionId, subscribe.QueueName));
+                    return MqInternalQueryReplyBoolean.Try(()
+                        => DeleteQueue(deleteQueue.QueueName));
                 }
                 else if (payload is MqUnsubscribe unsubscribe)
                 {
-                    _qeueManager.Use((o) => o.Unsubscribe(connectionId, unsubscribe.QueueName));
+                    return MqInternalQueryReplyBoolean.Try(()
+                        => _qeueManager.Use((o) => o.Unsubscribe(connectionId, unsubscribe.QueueName)));
                 }
                 else if (payload is MqEnqueueMessage enqueue)
                 {
-                    _qeueManager.Use((o) => o.EqueueMessage(enqueue.QueueName, enqueue.PayloadJson, enqueue.PayloadType));
+                    return MqInternalQueryReplyBoolean.Try(()
+                        => _qeueManager.Use((o) => o.EqueueMessage(enqueue.QueueName, enqueue.PayloadJson, enqueue.PayloadType)));
                 }
                 else if (payload is MqEnqueueQuery enqueueQuery)
                 {
-                    _qeueManager.Use((o) => o.EqueueQuery(connectionId, enqueueQuery.QueueName, enqueueQuery.QueryId, enqueueQuery.PayloadJson, enqueueQuery.PayloadType, enqueueQuery.ReplyType));
+                    return MqInternalQueryReplyBoolean.Try(()
+                        => _qeueManager.Use((o) => o.EqueueQuery(connectionId, enqueueQuery.QueueName, enqueueQuery.QueryId,
+                                                                    enqueueQuery.PayloadJson, enqueueQuery.PayloadType, enqueueQuery.ReplyType)));
                 }
                 else if (payload is MqEnqueueQueryReply enqueueQueryReply)
                 {
-                    _qeueManager.Use((o) => o.EqueueQueryReply(connectionId, enqueueQueryReply.QueueName, enqueueQueryReply.QueryId, enqueueQueryReply.PayloadJson, enqueueQueryReply.PayloadType, enqueueQueryReply.ReplyType));
+                    return MqInternalQueryReplyBoolean.Try(()
+                        => _qeueManager.Use((o) => o.EqueueQueryReply(connectionId, enqueueQueryReply.QueueName, enqueueQueryReply.QueryId,
+                                                                        enqueueQueryReply.PayloadJson, enqueueQueryReply.PayloadType, enqueueQueryReply.ReplyType)));
                 }
+
                 else
                 {
                     throw new Exception("The server bound notification type is not implemented.");
@@ -224,6 +250,7 @@ namespace NTDLS.MemoryQueue
             catch (Exception ex)
             {
                 //TODO: log this.
+                throw;
             }
         }
     }

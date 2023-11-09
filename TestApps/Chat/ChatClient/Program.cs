@@ -11,33 +11,49 @@ namespace ChatClient
         {
             var client = new MqClient();
 
-            client.Connect("localhost", 45784);
-
-            string queueName = "TestApps.Chat";
-
-            client.OnMessageReceived += Client_OnMessageReceived;
-            client.OnLog += (MqClient client, MqLogEntry entry) =>
+            try
             {
-                Console.WriteLine($"{entry.Severity} {entry.Message}");
-            };
 
-            client.CreateQueue(new MqQueueConfiguration(queueName));
-            client.Subscribe(queueName);
+                client.Connect("localhost", 45784);
 
-            Console.WriteLine("Chat client connected. Type /bye to close.");
+                string queueName = "TestApps.Chat";
 
-            while (true)
-            {
-                var message = Console.ReadLine();
-                if (message == "/bye")
+                client.OnMessageReceived += Client_OnMessageReceived;
+                client.OnLog += (MqClient client, MqLogEntry entry) =>
                 {
-                    break;
+                    Console.WriteLine($"{entry.Severity} {entry.Message}");
+                };
+
+                try
+                {
+                    client.CreateQueue(new MqQueueConfiguration(queueName));
                 }
+                catch
+                {
+                }
+                client.Subscribe(queueName);
 
-                client.EnqueueMessage(queueName, new ChatMessage(_clientId, message));
+                Console.WriteLine("Chat client connected. Type /bye to close.");
+
+                while (true)
+                {
+                    var message = Console.ReadLine();
+                    if (message == "/bye")
+                    {
+                        break;
+                    }
+
+                    client.EnqueueMessage(queueName, new ChatMessage(_clientId, message));
+                }
             }
-
-            client.Disconnect();
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Exception: {ex.Message}");
+            }
+            finally
+            {
+                client.Disconnect();
+            }
         }
         private static void Client_OnMessageReceived(MqClient client, IMqMessage message)
         {

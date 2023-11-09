@@ -1,5 +1,6 @@
 ﻿using Newtonsoft.Json;
 using NTDLS.MemoryQueue.Engine;
+using NTDLS.MemoryQueue.Engine.Payloads;
 using NTDLS.MemoryQueue.Engine.Payloads.ClientBound;
 using NTDLS.MemoryQueue.Engine.Payloads.ServerBound;
 using NTDLS.Semaphore;
@@ -81,7 +82,6 @@ namespace NTDLS.MemoryQueue
 
         #endregion
 
-
         private void EnsureConnected([NotNull] MqPeerConnection? activeConnection)
         {
             try
@@ -107,20 +107,32 @@ namespace NTDLS.MemoryQueue
         /// Creates a new queue with the given configuration.
         /// </summary>
         /// <param name="configuration">The configuration for the new queue.</param>
-        public void CreateQueue(MqQueueConfiguration configuration)
+        /// <param name="timeoutSeconds">The number of seconds to wait on the operation to be acknoledged by the server.</param>
+        public void CreateQueue(MqQueueConfiguration configuration, int timeoutSeconds = 30)
         {
             EnsureConnected(_activeConnection);
-            _activeConnection.SendNotification(new MqCreateQueue(configuration));
+
+            if (!_activeConnection.SendQuery<MqInternalQueryReplyBoolean>(new MqCreateQueue(configuration))
+                .ContinueWith(TestAsyncResult).Wait(timeoutSeconds * 1000))
+            {
+                throw new Exception("The operation timed-out.");
+            }
         }
 
         /// <summary>
         /// Shuts down and deletes an existing queue.
         /// </summary>
         /// <param name="queueName">The name of the queue to delete.</param>
-        public void DeleteQueue(string queueName)
+        /// <param name="timeoutSeconds">The number of seconds to wait on the operation to be acknoledged by the server.</param>
+        public void DeleteQueue(string queueName, int timeoutSeconds = 30)
         {
             EnsureConnected(_activeConnection);
-            _activeConnection.SendNotification(new MqDeleteQueue(queueName));
+
+            if (!_activeConnection.SendQuery<MqInternalQueryReplyBoolean>(new MqDeleteQueue(queueName))
+                .ContinueWith(TestAsyncResult).Wait(timeoutSeconds * 1000))
+            {
+                throw new Exception("The operation timed-out.");
+            }
         }
 
         /// <summary>
@@ -128,14 +140,20 @@ namespace NTDLS.MemoryQueue
         /// </summary>
         /// <param name="queueName">The name of the queue to add the message to.</param>
         /// <param name="message">The message to dispatch to the server for distribution.</param>
+        /// <param name="timeoutSeconds">The number of seconds to wait on the operation to be acknoledged by the server.</param>
         /// <exception cref="Exception"></exception>
-        public void EnqueueMessage(string queueName, IMqMessage message)
+        public void EnqueueMessage(string queueName, IMqMessage message, int timeoutSeconds = 30)
         {
             EnsureConnected(_activeConnection);
 
             var payloadJson = JsonConvert.SerializeObject(message);
             var payloadType = message.GetType().AssemblyQualifiedName ?? throw new Exception("The message type could not be determined.");
-            _activeConnection.SendNotification(new MqEnqueueMessage(queueName, payloadJson, payloadType));
+
+            if (!_activeConnection.SendQuery<MqInternalQueryReplyBoolean>(new MqEnqueueMessage(queueName, payloadJson, payloadType))
+                .ContinueWith(TestAsyncResult).Wait(timeoutSeconds * 1000))
+            {
+                throw new Exception("The operation timed-out.");
+            }
         }
 
         /// <summary>
@@ -145,10 +163,16 @@ namespace NTDLS.MemoryQueue
         /// <param name="payloadJson">The payload of the reply</param>
         /// <param name="payloadType">The type of the original query.</param>
         /// <param name="replyType">The type that the reply payload can be deserialized to.</param>
-        private void EnqueueQueryReply(MqClientBoundQuery query, string payloadJson, string payloadType, string replyType)
+        /// <param name="timeoutSeconds">The number of seconds to wait on the operation to be acknoledged by the server.</param>
+        private void EnqueueQueryReply(MqClientBoundQuery query, string payloadJson, string payloadType, string replyType, int timeoutSeconds = 30)
         {
             EnsureConnected(_activeConnection);
-            _activeConnection.SendNotification(new MqEnqueueQueryReply(query.QueueName, query.QueryId, payloadJson, payloadType, replyType));
+
+            if (!_activeConnection.SendQuery<MqInternalQueryReplyBoolean>(new MqEnqueueQueryReply(query.QueueName, query.QueryId, payloadJson, payloadType, replyType))
+                .ContinueWith(TestAsyncResult).Wait(timeoutSeconds * 1000))
+            {
+                throw new Exception("The operation timed-out.");
+            }
         }
 
         /// <summary>
@@ -157,16 +181,15 @@ namespace NTDLS.MemoryQueue
         /// <typeparam name="T">The expected reply type.</typeparam>
         /// <param name="queueName">The name of the queue to send the query to.</param>
         /// <param name="query">The query to dispatch to the server for distribution.</param>
-        /// <param name="secondsTimeout">The number of seconds to wait for a reply before egiving up.</param>
+        /// <param name="timeoutSeconds">The number of seconds to wait on the operation to be acknoledged by the server.</param>
         /// <returns></returns>
         /// <exception cref="Exception"></exception>
-        public async Task<T?> EnqueueQuery<T>(string queueName, IMqQuery query, int secondsTimeout = 30) where T : IMqQueryReply
+        public async Task<T?> EnqueueQuery<T>(string queueName, IMqQuery query, int timeoutSeconds = 30) where T : IMqQueryReply
         {
             EnsureConnected(_activeConnection);
 
             try
             {
-
                 var waitingQuery = new MqQueryWaitingForReply();
 
                 _queriesWaitingForReply.Use((o)
@@ -176,11 +199,15 @@ namespace NTDLS.MemoryQueue
                 var payloadType = query.GetType().AssemblyQualifiedName ?? throw new Exception("The query type could not be determined.");
                 var replyType = typeof(T).AssemblyQualifiedName ?? throw new Exception("The reply type could not be determined.");
 
-                _activeConnection.SendNotification(new MqEnqueueQuery(queueName, waitingQuery.QueryId, payloadJson, payloadType, replyType));
+                if (!_activeConnection.SendQuery<MqInternalQueryReplyBoolean>(new MqEnqueueQuery(queueName, waitingQuery.QueryId, payloadJson, payloadType, replyType))
+                    .ContinueWith(TestAsyncResult).Wait(timeoutSeconds * 1000))
+                {
+                    throw new Exception("The operation timed-out.");
+                }
 
                 return await Task.Run(() =>
                 {
-                    if (waitingQuery.Waiter.WaitOne(secondsTimeout * 1000))
+                    if (waitingQuery.Waiter.WaitOne(timeoutSeconds * 1000))
                     {
                         return JsonConvert.DeserializeObject<T>(waitingQuery.PayloadJson ?? string.Empty);
                     }
@@ -201,21 +228,33 @@ namespace NTDLS.MemoryQueue
         /// <summary>
         /// Subscribes this client to the specified queue.
         /// </summary>
-        /// <param name="queueName"></param>
-        public void Subscribe(string queueName)
+        /// <param name="queueName">The name of the queue to subscribe to.</param>
+        /// <param name="timeoutSeconds">The number of seconds to wait on the operation to be acknoledged by the server.</param>
+        public void Subscribe(string queueName, int timeoutSeconds = 30)
         {
             EnsureConnected(_activeConnection);
-            _activeConnection.SendNotification(new MqSubscribe(queueName));
+
+            if (!_activeConnection.SendQuery<MqInternalQueryReplyBoolean>(new MqSubscribe(queueName))
+                .ContinueWith(TestAsyncResult).Wait(timeoutSeconds * 1000))
+            {
+                throw new Exception("The operation timed-out.");
+            }
         }
 
         /// <summary>
         /// Unsubscribes the client from the specified queue.
         /// </summary>
-        /// <param name="queueName"></param>
-        public void Unsubscribe(string queueName)
+        /// <param name="queueName">The name of the queue to unsubscribe from.</param>
+        /// <param name="timeoutSeconds">The number of seconds to wait on the operation to be acknoledged by the server.</param>
+        public void Unsubscribe(string queueName, int timeoutSeconds = 30)
         {
             EnsureConnected(_activeConnection);
-            _activeConnection.SendNotification(new MqUnsubscribe(queueName));
+
+            if (!_activeConnection.SendQuery<MqInternalQueryReplyBoolean>(new MqUnsubscribe(queueName))
+                .ContinueWith(TestAsyncResult).Wait(timeoutSeconds * 1000))
+            {
+                throw new Exception("The operation timed-out.");
+            }
         }
 
         /// <summary>
@@ -329,6 +368,30 @@ namespace NTDLS.MemoryQueue
             catch (Exception ex)
             {
                 OnLog?.Invoke(this, new MqLogEntry(ex));
+            }
+        }
+
+        IFrameQueryReply IMqMemoryQueue.InvokeOnQueryReceived(Guid connectionId, IFrameQuery payload)
+        {
+            throw new Exception("The client bound query type is not implemented.");
+        }
+
+        private void TestAsyncResult(Task<MqInternalQueryReplyBoolean> o)
+        {
+            if (o.Exception != null)
+            {
+                throw new Exception($"The task failed. Exception: {o.Exception}");
+            }
+            else if (o.IsCompletedSuccessfully)
+            {
+                if (o.Result.Value != true)
+                {
+                    throw new Exception($"The task failed. Exception: {o.Result.Message}");
+                }
+            }
+            else
+            {
+                throw new Exception($"The task failed with an unknown exception.");
             }
         }
     }
