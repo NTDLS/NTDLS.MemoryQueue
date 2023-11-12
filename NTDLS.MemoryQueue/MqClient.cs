@@ -20,7 +20,7 @@ namespace NTDLS.MemoryQueue
         private readonly TcpClient _tcpClient = new();
         private MqPeerConnection? _activeConnection;
         private bool _keepRunning;
-        private readonly CriticalResource<Dictionary<Guid, MqQueryWaitingForReply>> _queriesWaitingForReply = new();
+        private readonly PessimisticSemaphore<Dictionary<Guid, MqQueryWaitingForReply>> _queriesWaitingForReply = new();
 
         #region Events.
 
@@ -408,7 +408,7 @@ namespace NTDLS.MemoryQueue
             }
         }
 
-        void IMqMemoryQueue.InvokeOnNotificationReceived(Guid connectionId, IFrameNotification payload)
+        void IMqMemoryQueue.InvokeOnNotificationReceived(Guid connectionId, IFramePayloadNotification payload)
         {
             try
             {
@@ -467,7 +467,7 @@ namespace NTDLS.MemoryQueue
             }
         }
 
-        IFrameQueryReply IMqMemoryQueue.InvokeOnQueryReceived(Guid connectionId, IFrameQuery payload)
+        IFramePayloadQueryReply IMqMemoryQueue.InvokeOnQueryReceived(Guid connectionId, IFramePayloadQuery payload)
         {
             try
             {

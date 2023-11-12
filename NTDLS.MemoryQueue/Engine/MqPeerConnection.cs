@@ -6,7 +6,7 @@ namespace NTDLS.MemoryQueue.Engine
 {
     internal class MqPeerConnection
     {
-        private readonly FrameBuffer _frameBuffer = new(16 * 1024);
+        private readonly FrameBuffer _frameBuffer = new();
         private readonly TcpClient _tcpClient; //The TCP/IP connection associated with this connection.
         private readonly Thread _dataPumpThread; //The thread that receives data for this connection.
         private readonly NetworkStream _stream; //The stream for the TCP/IP connection (used for reading and writing).
@@ -40,11 +40,11 @@ namespace NTDLS.MemoryQueue.Engine
             _stream = tcpClient.GetStream();
         }
 
-        public void SendNotification(IFrameNotification notification)
+        public void SendNotification(IFramePayloadNotification notification)
         {
             try
             {
-                _stream.WriteNotification(notification);
+                _stream.WriteNotificationFrame(notification);
             }
             catch (Exception ex)
             {
@@ -53,11 +53,11 @@ namespace NTDLS.MemoryQueue.Engine
             }
         }
 
-        public Task<T> SendQuery<T>(IFrameQuery query) where T : IFrameQueryReply
+        public Task<T> SendQuery<T>(IFramePayloadQuery query) where T : IFramePayloadQueryReply
         {
             try
             {
-                return _stream.WriteQuery<T>(query);
+                return _stream.WriteQueryFrame<T>(query);
             }
             catch (Exception ex)
             {

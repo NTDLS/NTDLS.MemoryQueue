@@ -14,11 +14,11 @@ namespace NTDLS.MemoryQueue
     public class MqServer : IMqMemoryQueue
     {
         private TcpListener? _listener;
-        private readonly CriticalResource<List<MqPeerConnection>> _activeConnections = new();
+        private readonly PessimisticSemaphore<List<MqPeerConnection>> _activeConnections = new();
         private Thread? _listenerThreadProc;
         private bool _keepRunning;
 
-        private readonly CriticalResource<MqQueueCollectionManager> _qeueManager = new();
+        private readonly PessimisticSemaphore<MqQueueCollectionManager> _qeueManager = new();
 
         #region Events.
 
@@ -200,7 +200,7 @@ namespace NTDLS.MemoryQueue
         /// <param name="connectionId">The connection id of the client</param>
         /// <param name="notification">The notification message to send.</param>
         /// <exception cref="Exception"></exception>
-        public void Notify(Guid connectionId, IFrameNotification notification)
+        public void Notify(Guid connectionId, IFramePayloadNotification notification)
         {
             try
             {
@@ -227,7 +227,7 @@ namespace NTDLS.MemoryQueue
         /// <param name="query">The query message to send.</param>
         /// <returns></returns>
         /// <exception cref="Exception"></exception>
-        public async Task<T?> Query<T>(Guid connectionId, IFrameQuery query) where T : IFrameQueryReply
+        public async Task<T?> Query<T>(Guid connectionId, IFramePayloadQuery query) where T : IFramePayloadQueryReply
         {
             try
             {
@@ -276,7 +276,7 @@ namespace NTDLS.MemoryQueue
             }
         }
 
-        void IMqMemoryQueue.InvokeOnNotificationReceived(Guid connectionId, IFrameNotification payload)
+        void IMqMemoryQueue.InvokeOnNotificationReceived(Guid connectionId, IFramePayloadNotification payload)
         {
             try
             {
@@ -289,7 +289,7 @@ namespace NTDLS.MemoryQueue
             }
         }
 
-        IFrameQueryReply IMqMemoryQueue.InvokeOnQueryReceived(Guid connectionId, IFrameQuery payload)
+        IFramePayloadQueryReply IMqMemoryQueue.InvokeOnQueryReceived(Guid connectionId, IFramePayloadQuery payload)
         {
             try
             {

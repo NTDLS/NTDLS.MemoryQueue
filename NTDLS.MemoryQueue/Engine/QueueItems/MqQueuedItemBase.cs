@@ -27,7 +27,7 @@ namespace NTDLS.MemoryQueue.Engine.QueueItems
         /// <summary>
         /// A list of the subscribers that the message has been sent to or that have had too many retries.
         /// </summary>
-        private readonly CriticalResource<List<MqDistributionMetrics>> _distributionMetrics = new();
+        private readonly PessimisticSemaphore<List<MqDistributionMetrics>> _distributionMetrics = new();
 
         public void RecordSuccessfulDistribution(Guid connectionId)
         {

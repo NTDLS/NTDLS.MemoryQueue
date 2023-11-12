@@ -5,7 +5,7 @@ namespace NTDLS.MemoryQueue.Engine.Payloads.ServerBound
     /// <summary>
     /// This is a delete queue request that is sent from the client to the server.
     /// </summary>
-    internal class MqDeleteQueue : IFrameQuery
+    internal class MqDeleteQueue : IFramePayloadQuery
     {
         public string QueueName { get; set; }
 

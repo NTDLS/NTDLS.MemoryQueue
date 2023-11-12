@@ -5,7 +5,7 @@ namespace NTDLS.MemoryQueue
     /// <summary>
     /// Defines a queue configuration.
     /// </summary>
-    public class MqQueueConfiguration : IFrameNotification
+    public class MqQueueConfiguration : IFramePayloadNotification
     {
         /// <summary>
         /// The name of the queue.

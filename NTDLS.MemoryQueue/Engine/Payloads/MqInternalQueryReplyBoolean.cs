@@ -2,7 +2,7 @@
 
 namespace NTDLS.MemoryQueue.Engine.Payloads
 {
-    internal class MqInternalQueryReplyBoolean : IFrameQueryReply
+    internal class MqInternalQueryReplyBoolean : IFramePayloadQueryReply
     {
         public delegate void CollapseExceptionToResultProc();
 

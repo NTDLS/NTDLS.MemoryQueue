@@ -9,8 +9,8 @@ namespace NTDLS.MemoryQueue
     {
         internal void InvokeOnConnected(Guid connectionId);
         internal void InvokeOnDisconnected(Guid connectionId);
-        internal void InvokeOnNotificationReceived(Guid connectionId, IFrameNotification payload);
-        internal IFrameQueryReply InvokeOnQueryReceived(Guid connectionId, IFrameQuery payload);
+        internal void InvokeOnNotificationReceived(Guid connectionId, IFramePayloadNotification payload);
+        internal IFramePayloadQueryReply InvokeOnQueryReceived(Guid connectionId, IFramePayloadQuery payload);
         internal void WriteLog(IMqMemoryQueue sender, MqLogEntry entry);
     }
 }
