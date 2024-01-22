@@ -18,7 +18,7 @@ namespace NTDLS.MemoryQueue.Engine
         public List<MqQueue> Queues { get; private set; } = new();
 
         /// <summary>
-        /// Since we are using a PessimisticSemaphore, we cant use a parameterized constructor so we have to set the server instance later.
+        /// Since we are using a PessimisticCriticalResource, we cant use a parameterized constructor so we have to set the server instance later.
         /// </summary>
         /// <param name="server"></param>
         public void SetServer(MqServer server)

@@ -20,7 +20,7 @@ namespace NTDLS.MemoryQueue
         private readonly TcpClient _tcpClient = new();
         private MqPeerConnection? _activeConnection;
         private bool _keepRunning;
-        private readonly PessimisticSemaphore<Dictionary<Guid, MqQueryWaitingForReply>> _queriesWaitingForReply = new();
+        private readonly PessimisticCriticalResource<Dictionary<Guid, MqQueryWaitingForReply>> _queriesWaitingForReply = new();
 
         #region Events.
 

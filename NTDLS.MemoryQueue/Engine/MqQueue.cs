@@ -31,7 +31,7 @@ namespace NTDLS.MemoryQueue.Engine
         /// <summary>
         /// The messages that are waiting in the queue.
         /// </summary>
-        public PessimisticSemaphore<List<IMqQueuedItem>> Messages { get; private set; } = new();
+        public PessimisticCriticalResource<List<IMqQueuedItem>> Messages { get; private set; } = new();
 
         /// <summary>
         /// Creates and starts a new queue.

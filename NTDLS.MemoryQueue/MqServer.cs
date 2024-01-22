@@ -14,11 +14,11 @@ namespace NTDLS.MemoryQueue
     public class MqServer : IMqMemoryQueue
     {
         private TcpListener? _listener;
-        private readonly PessimisticSemaphore<List<MqPeerConnection>> _activeConnections = new();
+        private readonly PessimisticCriticalResource<List<MqPeerConnection>> _activeConnections = new();
         private Thread? _listenerThreadProc;
         private bool _keepRunning;
 
-        private readonly PessimisticSemaphore<MqQueueCollectionManager> _qeueManager = new();
+        private readonly PessimisticCriticalResource<MqQueueCollectionManager> _qeueManager = new();
 
         #region Events.
 
