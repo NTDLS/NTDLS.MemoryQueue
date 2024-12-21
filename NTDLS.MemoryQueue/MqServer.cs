@@ -1,357 +1,159 @@
-﻿using NTDLS.MemoryQueue.Engine;
-using NTDLS.MemoryQueue.Engine.Payloads;
-using NTDLS.MemoryQueue.Engine.Payloads.ServerBound;
+﻿using NTDLS.MemoryQueue.Payloads.Queries.ServerToClient;
+using NTDLS.MemoryQueue.Server;
+using NTDLS.MemoryQueue.Server.QueryHandlers;
+using NTDLS.ReliableMessaging;
 using NTDLS.Semaphore;
-using NTDLS.StreamFraming.Payloads;
-using System.Net;
-using System.Net.Sockets;
 
 namespace NTDLS.MemoryQueue
 {
     /// <summary>
     /// Listens for connections from MessageClients and processes the incoming notifications/queries.
     /// </summary>
-    public class MqServer : IMqMemoryQueue
+    public class MqServer
     {
-        private TcpListener? _listener;
-        private readonly PessimisticCriticalResource<List<MqPeerConnection>> _activeConnections = new();
-        private Thread? _listenerThreadProc;
-        private bool _keepRunning;
-
-        private readonly PessimisticCriticalResource<MqQueueCollectionManager> _queueManager = new();
-
-        #region Events.
+        private readonly RmServer _rmServer;
+        private readonly PessimisticCriticalResource<Dictionary<string, MessageQueue>> _messageQueues = new();
 
         /// <summary>
-        /// Event fired when a client connects to the server.
+        /// Creates a new instance of the queue service.
         /// </summary>
-        public event ConnectedEvent? OnConnected;
-        /// <summary>
-        /// Event fired when a client connects to the server.
-        /// </summary>
-        /// <param name="server">The instance of the server that is calling the event.</param>
-        /// <param name="connectionId">The id of the client which was connected.</param>
-        public delegate void ConnectedEvent(MqServer server, Guid connectionId);
-
-        /// <summary>
-        /// Event fired when a client is disconnected from the server.
-        /// </summary>
-        public event DisconnectedEvent? OnDisconnected;
-        /// <summary>
-        /// Event fired when a client is disconnected from the server.
-        /// </summary>
-        /// <param name="server">The instance of the server that is calling the event.</param>
-        /// <param name="connectionId">The id of the client which was disconnected.</param>
-        public delegate void DisconnectedEvent(MqServer server, Guid connectionId);
-
-        /// <summary>
-        /// Event fired a log entry needs to be recorded.
-        /// </summary>
-        public event LogEvent? OnLog;
-        /// <summary>
-        /// Event fired a log entry needs to be recorded.
-        /// </summary>
-        /// <param name="sender">The instance of the client that is calling the event.</param>
-        /// <param name="entry">The log entry that is being reported.</param>
-        public delegate void LogEvent(IMqMemoryQueue sender, MqLogEntry entry);
-
-        #endregion
-
-        /// <summary>
-        /// Writes an event to the log.
-        /// </summary>
-        /// <param name="sender">The memory queue (client or server) that is writing the event.</param>
-        /// <param name="entry">The event which is to be recorded.</param>
-        private void WriteLog(IMqMemoryQueue sender, MqLogEntry entry) => OnLog?.Invoke(sender, entry);
-
-        /// <summary>
-        /// Creates a new queue with the given configuration.
-        /// </summary>
-        /// <param name="configuration">The configuration for the new queue.</param>
-        public void CreateQueue(MqQueueConfiguration configuration)
+        public MqServer()
         {
-            try
+            var rmConfiguration = new RmConfiguration()
             {
-                _queueManager.Use((o) => o.Create(configuration));
-            }
-            catch (Exception ex)
+                //TODO: implement some settings.
+            };
+
+            _rmServer = new RmServer(rmConfiguration);
+
+            _rmServer.AddHandler(new InternalServerQueryHandlers(this));
+
+            _rmServer.OnDisconnected += _rmServer_OnDisconnected;
+        }
+
+        private void _rmServer_OnDisconnected(RmContext context)
+        {
+            //When a client disconnects, remove their subscriptions.
+            _messageQueues.Use(mq =>
             {
-                WriteLog(this, new MqLogEntry(ex));
-                throw;
-            }
+                foreach (var q in mq)
+                {
+                    q.Value.Subscribers.Use(s => s.Remove(context.ConnectionId));
+                }
+            });
         }
 
         /// <summary>
-        /// Shuts down and deletes an existing queue.
-        /// </summary>
-        /// <param name="queueName">The name of the queue to delete.</param>
-        public void DeleteQueue(string queueName)
-        {
-            try
-            {
-                _queueManager.Use((o) => o.Delete(queueName));
-            }
-            catch (Exception ex)
-            {
-                WriteLog(this, new MqLogEntry(ex));
-                throw;
-            }
-        }
-
-        /// <summary>
-        /// Starts the message server.
+        /// Starts the message queue server.
         /// </summary>
         public void Start(int listenPort)
         {
-            try
-            {
-                if (_keepRunning)
-                {
-                    return;
-                }
-                _queueManager.Use((o) => o.SetServer(this));
-
-                _listener = new TcpListener(IPAddress.Any, listenPort);
-                _keepRunning = true;
-                _listenerThreadProc = new Thread(ListenerThreadProc);
-                _listenerThreadProc.Start();
-            }
-            catch (Exception ex)
-            {
-                WriteLog(this, new MqLogEntry(ex));
-                throw;
-            }
+            _rmServer.Start(listenPort);
         }
 
         /// <summary>
-        /// Stops the message server.
+        /// Stops the message queue server.
         /// </summary>
-        public void Shutdown()
+        public void Stop()
         {
-            try
-            {
-                if (_keepRunning == false)
-                {
-                    return;
-                }
-                _keepRunning = false;
-                Utility.TryAndIgnore(() => _listener?.Stop());
-                _listenerThreadProc?.Join();
-
-                _activeConnections.Use((o) =>
-                {
-                    o.ForEach(c => c.Disconnect(true));
-                    o.Clear();
-                });
-
-                _queueManager.Use((o) => o.Shutdown(true));
-            }
-            catch (Exception ex)
-            {
-                WriteLog(this, new MqLogEntry(ex));
-                throw;
-            }
-        }
-
-        void ListenerThreadProc()
-        {
-            try
-            {
-                Utility.EnsureNotNull(_listener);
-
-                Thread.CurrentThread.Name = $"NmqServer:ListenerThreadProc:{Environment.CurrentManagedThreadId}";
-
-                _listener.Start();
-
-                while (_keepRunning)
-                {
-                    var tcpClient = _listener.AcceptTcpClient(); //Wait for an inbound connection.
-
-                    if (tcpClient.Connected)
-                    {
-                        if (_keepRunning) //Check again, we may have received a connection while shutting down.
-                        {
-                            var activeConnection = new MqPeerConnection(this, tcpClient);
-                            _activeConnections.Use((o) => o.Add(activeConnection));
-                            activeConnection.RunAsync();
-                        }
-                    }
-                }
-            }
-            catch (SocketException ex)
-            {
-                if (ex.SocketErrorCode != SocketError.Interrupted
-                    && ex.SocketErrorCode != SocketError.Shutdown)
-                {
-                    WriteLog(this, new MqLogEntry(ex));
-                    throw;
-                }
-            }
-            catch (Exception ex)
-            {
-                WriteLog(this, new MqLogEntry(ex));
-                throw;
-            }
+            _rmServer.Stop();
         }
 
         /// <summary>
-        /// Dispatches a one way notification to the specified connection.
+        /// Deliver a message from a server queue to a subscribed client.
         /// </summary>
-        /// <param name="connectionId">The connection id of the client</param>
-        /// <param name="notification">The notification message to send.</param>
-        /// <exception cref="Exception"></exception>
-        public void Notify(Guid connectionId, IFramePayloadNotification notification)
+        internal bool DeliverMessage(Guid connectionId, string queueName, EnqueuedMessage enqueuedMessage)
         {
-            try
+            var result = _rmServer.Query(connectionId, new MessageDeliveryQuery(queueName, enqueuedMessage.ObjectType, enqueuedMessage.MessageJson)).Result;
+            if (string.IsNullOrEmpty(result.ErrorMessage) == false)
             {
-                var connection = _activeConnections.Use((o) => o.Where(c => c.Id == connectionId).FirstOrDefault());
-                if (connection == null)
-                {
-                    throw new Exception($"The connection with id '{connectionId}' was not found.");
-                }
+                throw new Exception(result.ErrorMessage);
+            }
+            return result.WasMessageConsumed;
+        }
 
-                connection.SendNotification(notification);
-            }
-            catch (Exception ex)
+        #region Client Instructions.
+
+        /// <summary>
+        /// Creates a new empty queue if it does not already exist.
+        /// </summary>
+        internal void CreateQueue(string queueName)
+        {
+            _messageQueues.Use(o =>
             {
-                WriteLog(this, new MqLogEntry(ex));
-                throw;
-            }
+                string queueKey = queueName.ToLowerInvariant();
+                if (o.ContainsKey(queueKey) == false)
+                {
+                    var messageQueue = new MessageQueue(this, queueName);
+                    messageQueue.Start();
+                    o.Add(queueKey, messageQueue);
+                }
+            });
         }
 
         /// <summary>
-        /// Sends a query to the specified client and expects a reply.
+        /// Creates a new empty queue if it does not already exist.
         /// </summary>
-        /// <typeparam name="T">The type of reply that is expected.</typeparam>
-        /// <param name="connectionId">The connection id of the client</param>
-        /// <param name="query">The query message to send.</param>
-        /// <returns></returns>
-        /// <exception cref="Exception"></exception>
-        public async Task<T?> Query<T>(Guid connectionId, IFramePayloadQuery query) where T : IFramePayloadQueryReply
+        internal void DeleteQueue(string queueName)
         {
-            try
+            _messageQueues.Use(o =>
             {
-                var connection = _activeConnections.Use((o) => o.Where(c => c.Id == connectionId).FirstOrDefault());
-                if (connection == null)
+                string queueKey = queueName.ToLowerInvariant();
+                if (o.TryGetValue(queueKey, out var messageQueue))
                 {
-                    throw new Exception($"The connection with id '{connectionId}' was not found.");
-                }
+                    messageQueue.Stop();
 
-                return await connection.SendQuery<T>(query);
-            }
-            catch (Exception ex)
-            {
-                WriteLog(this, new MqLogEntry(ex));
-                throw;
-            }
-        }
-
-        void IMqMemoryQueue.InvokeOnConnected(Guid connectionId)
-        {
-            try
-            {
-                OnConnected?.Invoke(this, connectionId);
-            }
-            catch (Exception ex)
-            {
-                WriteLog(this, new MqLogEntry(ex));
-                throw;
-            }
-        }
-
-        void IMqMemoryQueue.InvokeOnDisconnected(Guid connectionId)
-        {
-            try
-            {
-                if (_keepRunning) //Avoid a race condition with the client thread waiting on a lock on _activeConnections that is held by Server.Stop().
-                {
-                    _activeConnections.Use((o) => o.RemoveAll(o => o.Id == connectionId));
+                    messageQueue.EnqueuedMessages.UseAll([messageQueue.Subscribers], d => o.Remove(queueKey));
                 }
-                OnDisconnected?.Invoke(this, connectionId);
-            }
-            catch (Exception ex)
-            {
-                WriteLog(this, new MqLogEntry(ex));
-                throw;
-            }
-        }
-
-        void IMqMemoryQueue.InvokeOnNotificationReceived(Guid connectionId, IFramePayloadNotification payload)
-        {
-            try
-            {
-                throw new Exception("The server bound notification type is not implemented.");
-            }
-            catch (Exception ex)
-            {
-                WriteLog(this, new MqLogEntry(ex));
-                throw;
-            }
-        }
-
-        IFramePayloadQueryReply IMqMemoryQueue.InvokeOnQueryReceived(Guid connectionId, IFramePayloadQuery payload)
-        {
-            try
-            {
-                //Intercept queries to see if they are Client->Server commands.
-
-                if (payload is MqSubscribe subscribe)
-                {
-                    return MqInternalQueryReplyBoolean.CollapseExceptionToResult(()
-                        => _queueManager.Use((o) => o.Subscribe(connectionId, subscribe.QueueName)));
-                }
-                else if (payload is MqCreateQueue createQueue)
-                {
-                    return MqInternalQueryReplyBoolean.CollapseExceptionToResult(()
-                        => CreateQueue(createQueue.Configuration));
-                }
-                else if (payload is MqDeleteQueue deleteQueue)
-                {
-                    return MqInternalQueryReplyBoolean.CollapseExceptionToResult(()
-                        => DeleteQueue(deleteQueue.QueueName));
-                }
-                else if (payload is MqUnsubscribe unsubscribe)
-                {
-                    return MqInternalQueryReplyBoolean.CollapseExceptionToResult(()
-                        => _queueManager.Use((o) => o.Unsubscribe(connectionId, unsubscribe.QueueName)));
-                }
-                else if (payload is MqEnqueueMessage enqueue)
-                {
-                    return MqInternalQueryReplyBoolean.CollapseExceptionToResult(()
-                        => _queueManager.Use((o) => o.EnqueueMessage(enqueue.QueueName, enqueue.PayloadJson, enqueue.PayloadType)));
-                }
-                else if (payload is MqEnqueueQuery enqueueQuery)
-                {
-                    return MqInternalQueryReplyBoolean.CollapseExceptionToResult(()
-                        => _queueManager.Use((o) => o.EnqueueQuery(connectionId, enqueueQuery.QueueName, enqueueQuery.QueryId,
-                                                                    enqueueQuery.PayloadJson, enqueueQuery.PayloadType, enqueueQuery.ReplyType)));
-                }
-                else if (payload is MqEnqueueQueryReply enqueueQueryReply)
-                {
-                    return MqInternalQueryReplyBoolean.CollapseExceptionToResult(()
-                        => _queueManager.Use((o) => o.EnqueueQueryReply(connectionId, enqueueQueryReply.QueueName, enqueueQueryReply.QueryId,
-                                                                        enqueueQueryReply.PayloadJson, enqueueQueryReply.PayloadType, enqueueQueryReply.ReplyType)));
-                }
-                else
-                {
-                    throw new Exception("The server bound notification type is not implemented.");
-                }
-            }
-            catch (Exception ex)
-            {
-                WriteLog(this, new MqLogEntry(ex));
-                throw;
-            }
+            });
         }
 
         /// <summary>
-        /// Writes an event to the log.
+        /// Creates a subscription to a queue for a given connection id.
         /// </summary>
-        /// <param name="sender">The memory queue (client or server) that is writing the event.</param>
-        /// <param name="entry">The event which is to be recorded.</param>
-        void IMqMemoryQueue.WriteLog(IMqMemoryQueue sender, MqLogEntry entry)
+        internal void SubscribeToQueue(Guid connectionId, string queueName)
         {
-            OnLog?.Invoke(sender, entry);
+            _messageQueues.Use(o =>
+            {
+                string queueKey = queueName.ToLowerInvariant();
+                if (o.TryGetValue(queueKey, out var messageQueue))
+                {
+                    messageQueue.Subscribers.Use(s => s.Add(connectionId));
+                }
+            });
         }
+
+        /// <summary>
+        /// Removes a subscription from a queue for a given connection id.
+        /// </summary>
+        internal void UnsubscribeFromQueue(Guid connectionId, string queueName)
+        {
+            _messageQueues.Use(o =>
+            {
+                string queueKey = queueName.ToLowerInvariant();
+                if (o.TryGetValue(queueKey, out var messageQueue))
+                {
+                    messageQueue.Subscribers.Use(s => s.Remove(connectionId));
+                }
+            });
+        }
+
+        /// <summary>
+        /// Removes a subscription from a queue for a given connection id.
+        /// </summary>
+        internal void EnqueueMessage(string queueName, string objectType, string messageJson)
+        {
+            _messageQueues.Use(o =>
+            {
+                string queueKey = queueName.ToLowerInvariant();
+                if (o.TryGetValue(queueKey, out var messageQueue))
+                {
+                    messageQueue.EnqueuedMessages.Use(s => s.Add(new EnqueuedMessage(objectType, messageJson)));
+                    messageQueue.DeliveryThreadWaitEvent.Set();
+                }
+            });
+        }
+
+        #endregion
     }
 }

@@ -1,11 +1,9 @@
-﻿using NTDLS.StreamFraming.Payloads;
-
-namespace NTDLS.MemoryQueue
+﻿namespace NTDLS.MemoryQueue
 {
     /// <summary>
     /// Defines a queue configuration.
     /// </summary>
-    public class MqQueueConfiguration : IFramePayloadNotification
+    public class MqQueueConfiguration
     {
         /// <summary>
         /// The name of the queue.

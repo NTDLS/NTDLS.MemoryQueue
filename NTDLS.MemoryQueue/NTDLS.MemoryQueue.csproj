@@ -7,19 +7,21 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <Title>NTDLS.MemoryQueue</Title>
-    <Copyright>Copyright © 2024 NetworkDLS</Copyright>
-    <Description>In memory non-persistent message queue with notifications/messages, query/reply support and several message boradcast schemes. Intended for inter-process-communication, queuing, load-balancing and buffering over TCP/IP.</Description>
+    <Copyright>Copyright © 2025 NetworkDLS</Copyright>
+    <Description>
+      In memory non-persistent message queue intended for inter-process-communication, queuing, load-balancing and buffering over TCP/IP.
+    </Description>
     <PackageProjectUrl>https://github.com/NTDLS/NTDLS.MemoryQueue</PackageProjectUrl>
     <RepositoryUrl>https://github.com/NTDLS/NTDLS.MemoryQueue</RepositoryUrl>
     <PackageTags>ipc;message-queue;inter-process-communication;tcp-ip;message-broker;mq;</PackageTags>
     <PackageReleaseNotes>
-      Dependency updates.
+      Complete rewrite using ReliableMessaging.
     </PackageReleaseNotes>
     <RepositoryType>git</RepositoryType>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <Authors>NetworkDLS</Authors>
     <Company>NetworkDLS</Company>
-    <version>1.1.5</version>
+    <version>2.0.0</version>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageIcon>Logo.png</PackageIcon>
     <ApplicationIcon>Logo.ico</ApplicationIcon>
@@ -48,10 +50,8 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="9.0.0" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\..\NTDLS.StreamFraming\NTDLS.StreamFraming\NTDLS.StreamFraming.csproj" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="NTDLS.ReliableMessaging" Version="1.11.0" />
   </ItemGroup>
 
 </Project>

@@ -24,3 +24,11 @@ TestApps/Chat/ChatLibrary/obj/
 TestApps/Chat/ChatServer/bin/
 
 TestApps/Chat/ChatServer/obj/
+
+QueueClient/bin/
+
+QueueClient/obj/
+
+QueueServer/obj/
+
+QueueServer/bin/

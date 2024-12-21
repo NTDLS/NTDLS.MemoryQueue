@@ -9,7 +9,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\NTDLS.MemoryQueue\NTDLS.MemoryQueue.csproj" />
-    <ProjectReference Include="..\ChatLibrary\ChatLibrary.csproj" />
   </ItemGroup>
 
 </Project>
