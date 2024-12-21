@@ -3,15 +3,15 @@
     /// <summary>
     /// Defines a queue configuration.
     /// </summary>
-    public class MqQueueConfiguration(string name)
+    public class MqQueueConfiguration(string queueName)
     {
         /// <summary>
         /// The name of the queue.
         /// </summary>
-        public string Name { get; set; } = name;
+        public string QueueName { get; set; } = queueName;
 
         /// <summary>
-        /// The maximum number of times the server will attempt to deliver any message to a subscriber before giving up.
+        /// The maximum number of times the server will attempt to deliver any message to a subscriber before giving up. 0 = infinite.
         /// </summary>
         public int MaxDeliveryAttempts { get; set; } = 10;
 

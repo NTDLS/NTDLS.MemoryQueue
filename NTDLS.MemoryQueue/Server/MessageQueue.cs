@@ -72,7 +72,7 @@ namespace NTDLS.MemoryQueue.Server
                     {
                         foreach (var subscriberId in yetToBeDeliveredSubscribers)
                         {
-                            if (messageQueue.QueueServer.DeliverMessage(subscriberId, messageQueue.QueueConfiguration.Name, topMessage))
+                            if (messageQueue.QueueServer.DeliverMessage(subscriberId, messageQueue.QueueConfiguration.QueueName, topMessage))
                             {
                                 //This thread is the only place we manage [SatisfiedSubscribersConnectionIDs], so we can use it without additional locking.
                                 topMessage.SatisfiedSubscribersConnectionIDs.Add(subscriberId);
@@ -90,8 +90,9 @@ namespace NTDLS.MemoryQueue.Server
                                 topMessage.SubscriberMessageDeliveries.Add(subscriberId, subscriberMessageDelivery);
                             }
 
-                            //If we have tried to deliver this message too many times, then mark this subscriber-message as satisfied.
-                            if (subscriberMessageDelivery.DeliveryAttempts >= messageQueue.QueueConfiguration.MaxDeliveryAttempts)
+                            //If we have tried to deliver this message to this subscriber too many times, then mark this subscriber-message as satisfied.
+                            if (messageQueue.QueueConfiguration.MaxDeliveryAttempts > 0
+                                && subscriberMessageDelivery.DeliveryAttempts >= messageQueue.QueueConfiguration.MaxDeliveryAttempts)
                             {
                                 topMessage.SatisfiedSubscribersConnectionIDs.Add(subscriberId);
                             }

@@ -93,7 +93,7 @@ namespace NTDLS.MemoryQueue
         {
             _messageQueues.Use(o =>
             {
-                string queueKey = queueConfiguration.Name.ToLowerInvariant();
+                string queueKey = queueConfiguration.QueueName.ToLowerInvariant();
                 if (o.ContainsKey(queueKey) == false)
                 {
                     var messageQueue = new MessageQueue(this, queueConfiguration);
