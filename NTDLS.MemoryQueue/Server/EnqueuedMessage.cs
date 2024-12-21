@@ -30,6 +30,8 @@
         /// <summary>
         /// The list of connection IDs that the message has been successfully delivered to.
         /// </summary>
-        public HashSet<Guid> DeliveredSubscriberConnectionIDs { get; set; } = new();
+        public Dictionary<Guid, SubscriberMessageDelivery> SubscriberMessageDeliveries { get; set; } = new();
+
+        public HashSet<Guid> SatisfiedSubscribersConnectionIDs { get; set; } = new();
     }
 }

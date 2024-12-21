@@ -29,9 +29,11 @@ namespace NTDLS.MemoryQueue.Server
         {
             var messageQueue = pMessageQueue.EnsureNotNull<MessageQueue>();
 
+            var lastStaleMessageScan = DateTime.UtcNow;
+
             while (messageQueue.KeepRunning)
             {
-                int successfulDeliveries = 0;
+                int successfulDeliveries = 0; //Just used to omit waiting. We want to spin fast when we are delivering messages.
 
                 try
                 {
@@ -40,9 +42,18 @@ namespace NTDLS.MemoryQueue.Server
 
                     messageQueue.EnqueuedMessages.UseAll([messageQueue.Subscribers], m =>
                     {
+                        //We only process a queue if it has subscribers, this is so we do not discard messages for queues with no subscribers.
+                        if (messageQueue.QueueConfiguration.MaxMessageAge > TimeSpan.Zero && (DateTime.UtcNow - lastStaleMessageScan).TotalSeconds >= 10)
+                        {
+                            //If MaxMessageAge is defined, then remove stale messages.
+                            m.RemoveAll(o => (DateTime.UtcNow - o.Timestamp) > messageQueue.QueueConfiguration.MaxMessageAge);
+
+                            //There could be a lot of messages in the queue, so lets not needlessly compare the timestamps each-and-every loop.
+                            lastStaleMessageScan = DateTime.UtcNow;
+                        }
+
                         messageQueue.Subscribers.Use(s =>
                         {
-                            //We only process a queue if it has subscribers, this is so we do not discard messages for queues with no subscribers.
                             if (s.Count > 0)
                             {
                                 topMessage = m.FirstOrDefault(); //Get the first message in the list, if any.
@@ -50,7 +61,7 @@ namespace NTDLS.MemoryQueue.Server
                                 if (topMessage != null)
                                 {
                                     //Get list of subscribers that have yet to get a copy of the message.
-                                    yetToBeDeliveredSubscribers = s.Except(topMessage.DeliveredSubscriberConnectionIDs).ToList();
+                                    yetToBeDeliveredSubscribers = s.Except(topMessage.SatisfiedSubscribersConnectionIDs).ToList();
                                 }
                             }
                         });
@@ -63,9 +74,26 @@ namespace NTDLS.MemoryQueue.Server
                         {
                             if (messageQueue.QueueServer.DeliverMessage(subscriberId, messageQueue.QueueConfiguration.Name, topMessage))
                             {
-                                //This thread is the only place we manage [SentToSubscriber], so we can use it without additional locking.
-                                topMessage.DeliveredSubscriberConnectionIDs.Add(subscriberId);
+                                //This thread is the only place we manage [SatisfiedSubscribersConnectionIDs], so we can use it without additional locking.
+                                topMessage.SatisfiedSubscribersConnectionIDs.Add(subscriberId);
                                 successfulDeliveries++;
+                            }
+
+                            //Keep track of per-message-subscriber delivery metrics.
+                            if (topMessage.SubscriberMessageDeliveries.TryGetValue(subscriberId, out var subscriberMessageDelivery))
+                            {
+                                subscriberMessageDelivery.DeliveryAttempts++;
+                            }
+                            else
+                            {
+                                subscriberMessageDelivery = new SubscriberMessageDelivery() { DeliveryAttempts = 1 };
+                                topMessage.SubscriberMessageDeliveries.Add(subscriberId, subscriberMessageDelivery);
+                            }
+
+                            //If we have tried to deliver this message too many times, then mark this subscriber-message as satisfied.
+                            if (subscriberMessageDelivery.DeliveryAttempts >= messageQueue.QueueConfiguration.MaxDeliveryAttempts)
+                            {
+                                topMessage.SatisfiedSubscribersConnectionIDs.Add(subscriberId);
                             }
                         }
 
@@ -73,8 +101,8 @@ namespace NTDLS.MemoryQueue.Server
                         {
                             messageQueue.Subscribers.Use(s =>
                             {
-                                //If the message has been delivered to all subscribers, then remove the message.
-                                if (s.Except(topMessage.DeliveredSubscriberConnectionIDs).Any() == false)
+                                //If the all message-subscribers are satisfied, then remove the message.
+                                if (s.Except(topMessage.SatisfiedSubscribersConnectionIDs).Any() == false)
                                 {
                                     //If the message has been delivered to all subscribers, then remove it from the message list.
                                     m.Remove(topMessage);
