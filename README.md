@@ -6,10 +6,11 @@ In memory non-persistent message queue intended for inter-process-communication,
     queuing, load-balancing and buffering over TCP/IP.
 
 
->**Running the server:**
->
->Running the server can literally be done with two lines of code and can be run in the same process as the client.
->The server does not have to be dedicated either, it can be one of the process that is involved in inner-process-communication.
+## Running the server:
+
+Running the server can literally be done with two lines of code and can be run in the same process as the client.
+The server does not have to be dedicated either, it can be one of the process that is involved in inner-process-communication.
+
 ```csharp
 internal class Program
 {
@@ -28,9 +29,9 @@ internal class Program
 ```
 
 
->**Enqueuing a message.**
->
->Enqueuing a one-way message that is broadcast to all connected peers that have subscribed to the queue.
+## Enqueuing a message.
+Enqueuing a one-way message that is broadcast to all connected peers that have subscribed to the queue.
+
 ```csharp
 internal class Program
 {
@@ -60,22 +61,16 @@ internal class Program
 }
 ```
 
+## Receiving a notification message
+Receiving a notification is easy. If you are subscribed to the queue, you will receive the message.
+Further messages will be held until the event method returns.
 
->**Receiving a notification message:**
->
->Receiving a notification is easy. If you are subscribed to the queue, you will receive the message.
->Further messages will be held until the event method returns.
 ```csharp
 internal class Program
 {
-    internal class MyMessage : IMqMessage
+    internal class MyMessage(string text): IMqMessage
     {
-        public string Text { get; set; }
-
-        public MyMessage(string text)
-        {
-            Text = text;
-        }
+        public string Text { get; set; } = text;
     }
 
     static void Main()
@@ -89,7 +84,7 @@ internal class Program
         client.OnMessageReceived += Client_OnMessageReceived;
 
         //Create a queue, its ok its it already exists.
-        client.CreateQueue(new MqQueueConfiguration("MyFirstQueue"));
+        client.CreateQueue("MyFirstQueue");
 
         //Subscribe to the queue.
         client.Subscribe("MyFirstQueue");
@@ -102,8 +97,7 @@ internal class Program
 
     private static bool Client_OnReceived(MqClient client, IMqMessage message)
     {
-        //We received a message. There are numerous ways to handle these, but here
-        //  we are going to pattern matching to determine what message was received.
+        //We received a message. Use pattern matching to determine what message was received.
         if (message is MyMessage myMessage)
         {
             Console.WriteLine($"Client received message from server: {myMessage.Text}");
