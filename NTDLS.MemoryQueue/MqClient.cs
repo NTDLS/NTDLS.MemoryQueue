@@ -114,7 +114,7 @@ namespace NTDLS.MemoryQueue
         /// Creates a new queue with the given configuration.
         /// </summary>
         /// <param name="configuration">The configuration for the new queue.</param>
-        /// <param name="timeoutSeconds">The number of seconds to wait on the operation to be acknoledged by the server.</param>
+        /// <param name="timeoutSeconds">The number of seconds to wait on the operation to be acknowledged by the server.</param>
         public void CreateQueue(MqQueueConfiguration configuration, int timeoutSeconds = 30)
         {
             try
@@ -138,7 +138,7 @@ namespace NTDLS.MemoryQueue
         /// Shuts down and deletes an existing queue.
         /// </summary>
         /// <param name="queueName">The name of the queue to delete.</param>
-        /// <param name="timeoutSeconds">The number of seconds to wait on the operation to be acknoledged by the server.</param>
+        /// <param name="timeoutSeconds">The number of seconds to wait on the operation to be acknowledged by the server.</param>
         public void DeleteQueue(string queueName, int timeoutSeconds = 30)
         {
             try
@@ -159,11 +159,11 @@ namespace NTDLS.MemoryQueue
         }
 
         /// <summary>
-        /// Enqueues a one-way message for distirbution to all subscribers.
+        /// Enqueues a one-way message for distribution to all subscribers.
         /// </summary>
         /// <param name="queueName">The name of the queue to add the message to.</param>
         /// <param name="message">The message to dispatch to the server for distribution.</param>
-        /// <param name="timeoutSeconds">The number of seconds to wait on the operation to be acknoledged by the server.</param>
+        /// <param name="timeoutSeconds">The number of seconds to wait on the operation to be acknowledged by the server.</param>
         /// <exception cref="Exception"></exception>
         public void EnqueueMessage(string queueName, IMqMessage message, int timeoutSeconds = 30)
         {
@@ -194,7 +194,7 @@ namespace NTDLS.MemoryQueue
         /// <param name="payloadJson">The payload of the reply</param>
         /// <param name="payloadType">The type of the original query.</param>
         /// <param name="replyType">The type that the reply payload can be deserialized to.</param>
-        /// <param name="timeoutSeconds">The number of seconds to wait on the operation to be acknoledged by the server.</param>
+        /// <param name="timeoutSeconds">The number of seconds to wait on the operation to be acknowledged by the server.</param>
         private void EnqueueQueryReply(MqClientBoundQuery query, string payloadJson, string payloadType, string replyType, int timeoutSeconds = 30)
         {
             try
@@ -220,7 +220,7 @@ namespace NTDLS.MemoryQueue
         /// <typeparam name="T">The expected reply type.</typeparam>
         /// <param name="queueName">The name of the queue to send the query to.</param>
         /// <param name="query">The query to dispatch to the server for distribution.</param>
-        /// <param name="timeoutSeconds">The number of seconds to wait on the operation to be acknoledged by the server.</param>
+        /// <param name="timeoutSeconds">The number of seconds to wait on the operation to be acknowledged by the server.</param>
         /// <returns></returns>
         /// <exception cref="Exception"></exception>
         public async Task<T?> EnqueueQuery<T>(string queueName, IMqQuery query, int timeoutSeconds = 30) where T : IMqQueryReply
@@ -268,7 +268,7 @@ namespace NTDLS.MemoryQueue
         /// Subscribes this client to the specified queue.
         /// </summary>
         /// <param name="queueName">The name of the queue to subscribe to.</param>
-        /// <param name="timeoutSeconds">The number of seconds to wait on the operation to be acknoledged by the server.</param>
+        /// <param name="timeoutSeconds">The number of seconds to wait on the operation to be acknowledged by the server.</param>
         public void Subscribe(string queueName, int timeoutSeconds = 30)
         {
             try
@@ -292,7 +292,7 @@ namespace NTDLS.MemoryQueue
         /// Unsubscribes the client from the specified queue.
         /// </summary>
         /// <param name="queueName">The name of the queue to unsubscribe from.</param>
-        /// <param name="timeoutSeconds">The number of seconds to wait on the operation to be acknoledged by the server.</param>
+        /// <param name="timeoutSeconds">The number of seconds to wait on the operation to be acknowledged by the server.</param>
         public void Unsubscribe(string queueName, int timeoutSeconds = 30)
         {
             try
@@ -316,7 +316,7 @@ namespace NTDLS.MemoryQueue
         /// Connects to a specified message server by its host name.
         /// </summary>
         /// <param name="hostName">The hostname of the message server.</param>
-        /// <param name="port">The listenr port of the message server.</param>
+        /// <param name="port">The listener port of the message server.</param>
         public void Connect(string hostName, int port)
         {
             try

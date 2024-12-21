@@ -18,12 +18,12 @@ namespace NTDLS.MemoryQueue
         public int MaxDistributionAttempts { get; set; } = 10;
 
         /// <summary>
-        /// The maximum time in seconds that a item can remain in the queue without being deleivered. 0 = infinite.
+        /// The maximum time in seconds that a item can remain in the queue without being delivered. 0 = infinite.
         /// </summary>
         public int MaxAgeInSeconds { get; set; } = 0;
 
         /// <summary>
-        /// Constructs a deault queue configuration.
+        /// Constructs a default queue configuration.
         /// </summary>
         /// <param name="name"></param>
         public MqQueueConfiguration(string name)

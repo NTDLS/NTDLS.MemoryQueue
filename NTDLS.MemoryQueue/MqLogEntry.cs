@@ -13,7 +13,7 @@ namespace NTDLS.MemoryQueue
         public DateTime OccurrenceDateTime { get; set; } = DateTime.UtcNow;
 
         /// <summary>
-        /// The sevirity of the log entry.
+        /// The severity of the log entry.
         /// </summary>
         public MqLogSeverity Severity { get; set; }
 
@@ -21,7 +21,6 @@ namespace NTDLS.MemoryQueue
         /// The message associated with the log entry.
         /// </summary>
         public string Message { get; set; } = string.Empty;
-
 
         /// <summary>
         /// Creates a empty log entry.
@@ -43,8 +42,6 @@ namespace NTDLS.MemoryQueue
         /// <summary>
         /// Creates an exception log entry from an exception and an custom message.
         /// </summary>
-        /// <param name="message"></param>
-        /// <param name="ex"></param>
         public MqLogEntry(string message, Exception ex)
         {
             Severity = MqLogSeverity.Exception;
@@ -54,8 +51,6 @@ namespace NTDLS.MemoryQueue
         /// <summary>
         /// Creates a custom log entry.
         /// </summary>
-        /// <param name="severity"></param>
-        /// <param name="message"></param>
         public MqLogEntry(MqLogSeverity severity, string message)
         {
             Severity = severity;

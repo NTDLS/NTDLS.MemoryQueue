@@ -4,38 +4,23 @@ namespace TestHarness
 {
     internal class Program
     {
-        internal class MyMessage : IMqMessage
+        internal class MyMessage(string text) : IMqMessage
         {
-            public string Text { get; set; }
-
-            public MyMessage(string text)
-            {
-                Text = text;
-            }
+            public string Text { get; set; } = text;
         }
 
-        internal class MyQuery : IMqQuery
+        internal class MyQuery(string message) : IMqQuery
         {
-            public string Message { get; set; }
-
-            public MyQuery(string message)
-            {
-                Message = message;
-            }
+            public string Message { get; set; } = message;
         }
 
-        internal class MyQueryReply : IMqQueryReply
+        internal class MyQueryReply(string message) : IMqQueryReply
         {
-            public string Message { get; set; }
-
-            public MyQueryReply(string message)
-            {
-                Message = message;
-            }
+            public string Message { get; set; } = message;
         }
 
 
-        static MqClient PropupClient()
+        static MqClient InitializeClient()
         {
             //Start a client and connect to the server.
             var client = new MqClient();
@@ -61,15 +46,14 @@ namespace TestHarness
                 throw new Exception("The query was unhandled.");
             };
 
-
             client.Connect("localhost", 45784); //Connect to the queue server.
             client.CreateQueue(new MqQueueConfiguration("MyFirstQueue")); //Create a queue.
             client.Subscribe("MyFirstQueue"); //Subscribe to the queue.
 
             //Enqueue a one way message to be distributed to all subscribers.
-            client.EnqueueMessage("MyFirstQueue", new MyMessage("This is a message"));
+            //client.EnqueueMessage("MyFirstQueue", new MyMessage("This is a message"));
 
-            //Enqueu a query that is to be distributed to all subscribers. The first one to reply wins.
+            //Enqueue a query that is to be distributed to all subscribers. The first one to reply wins.
             client.EnqueueQuery<MyQueryReply>("MyFirstQueue", new MyQuery("Ping!")).ContinueWith((o) =>
             {
                 if (o.IsCompletedSuccessfully && o.Result != null)
@@ -87,7 +71,7 @@ namespace TestHarness
             var server = new MqServer();
             server.Start(45784);
 
-            var client = PropupClient();
+            var client = InitializeClient();
 
             Console.WriteLine("Press [enter] to shutdown.");
             Console.ReadLine();

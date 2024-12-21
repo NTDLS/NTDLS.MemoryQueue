@@ -18,7 +18,7 @@ namespace NTDLS.MemoryQueue
         private Thread? _listenerThreadProc;
         private bool _keepRunning;
 
-        private readonly PessimisticCriticalResource<MqQueueCollectionManager> _qeueManager = new();
+        private readonly PessimisticCriticalResource<MqQueueCollectionManager> _queueManager = new();
 
         #region Events.
 
@@ -72,7 +72,7 @@ namespace NTDLS.MemoryQueue
         {
             try
             {
-                _qeueManager.Use((o) => o.Create(configuration));
+                _queueManager.Use((o) => o.Create(configuration));
             }
             catch (Exception ex)
             {
@@ -89,7 +89,7 @@ namespace NTDLS.MemoryQueue
         {
             try
             {
-                _qeueManager.Use((o) => o.Delete(queueName));
+                _queueManager.Use((o) => o.Delete(queueName));
             }
             catch (Exception ex)
             {
@@ -109,7 +109,7 @@ namespace NTDLS.MemoryQueue
                 {
                     return;
                 }
-                _qeueManager.Use((o) => o.SetServer(this));
+                _queueManager.Use((o) => o.SetServer(this));
 
                 _listener = new TcpListener(IPAddress.Any, listenPort);
                 _keepRunning = true;
@@ -144,7 +144,7 @@ namespace NTDLS.MemoryQueue
                     o.Clear();
                 });
 
-                _qeueManager.Use((o) => o.Shutdown(true));
+                _queueManager.Use((o) => o.Shutdown(true));
             }
             catch (Exception ex)
             {
@@ -298,7 +298,7 @@ namespace NTDLS.MemoryQueue
                 if (payload is MqSubscribe subscribe)
                 {
                     return MqInternalQueryReplyBoolean.CollapseExceptionToResult(()
-                        => _qeueManager.Use((o) => o.Subscribe(connectionId, subscribe.QueueName)));
+                        => _queueManager.Use((o) => o.Subscribe(connectionId, subscribe.QueueName)));
                 }
                 else if (payload is MqCreateQueue createQueue)
                 {
@@ -313,23 +313,23 @@ namespace NTDLS.MemoryQueue
                 else if (payload is MqUnsubscribe unsubscribe)
                 {
                     return MqInternalQueryReplyBoolean.CollapseExceptionToResult(()
-                        => _qeueManager.Use((o) => o.Unsubscribe(connectionId, unsubscribe.QueueName)));
+                        => _queueManager.Use((o) => o.Unsubscribe(connectionId, unsubscribe.QueueName)));
                 }
                 else if (payload is MqEnqueueMessage enqueue)
                 {
                     return MqInternalQueryReplyBoolean.CollapseExceptionToResult(()
-                        => _qeueManager.Use((o) => o.EqueueMessage(enqueue.QueueName, enqueue.PayloadJson, enqueue.PayloadType)));
+                        => _queueManager.Use((o) => o.EnqueueMessage(enqueue.QueueName, enqueue.PayloadJson, enqueue.PayloadType)));
                 }
                 else if (payload is MqEnqueueQuery enqueueQuery)
                 {
                     return MqInternalQueryReplyBoolean.CollapseExceptionToResult(()
-                        => _qeueManager.Use((o) => o.EqueueQuery(connectionId, enqueueQuery.QueueName, enqueueQuery.QueryId,
+                        => _queueManager.Use((o) => o.EnqueueQuery(connectionId, enqueueQuery.QueueName, enqueueQuery.QueryId,
                                                                     enqueueQuery.PayloadJson, enqueueQuery.PayloadType, enqueueQuery.ReplyType)));
                 }
                 else if (payload is MqEnqueueQueryReply enqueueQueryReply)
                 {
                     return MqInternalQueryReplyBoolean.CollapseExceptionToResult(()
-                        => _qeueManager.Use((o) => o.EqueueQueryReply(connectionId, enqueueQueryReply.QueueName, enqueueQueryReply.QueryId,
+                        => _queueManager.Use((o) => o.EnqueueQueryReply(connectionId, enqueueQueryReply.QueueName, enqueueQueryReply.QueryId,
                                                                         enqueueQueryReply.PayloadJson, enqueueQueryReply.PayloadType, enqueueQueryReply.ReplyType)));
                 }
                 else

@@ -7,7 +7,7 @@ namespace ChatClient
     {
         static Guid _clientId = Guid.NewGuid();
 
-        static void Main(string[] args)
+        static void Main()
         {
             var client = new MqClient();
 

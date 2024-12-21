@@ -1,6 +1,6 @@
 # NTDLS.MemoryQueue
 
-📦 Be sure to check out the NuGet pacakge: https://www.nuget.org/packages/NTDLS.MemoryQueue
+📦 Be sure to check out the NuGet package: https://www.nuget.org/packages/NTDLS.MemoryQueue
 
 In memory non-persistent message queue with notifications/messages, query/reply
     support and several message broadcast schemes. Intended for inter-process-communication,
@@ -14,7 +14,7 @@ In memory non-persistent message queue with notifications/messages, query/reply
 ```csharp
 internal class Program
 {
-    static MqServer _server = new MqServer(); //Literal line #1.
+    static var _server = new MqServer(); //Literal line #1.
 
     static void Main()
     {
@@ -116,7 +116,7 @@ internal class Program
 
 >**Enqueuing a query, a message type that does expect a reply:**
 >
->You can also enque a query. The query will be received by all subscribed clients and any one of them can respond.
+>You can also enqueue a query. The query will be received by all subscribed clients and any one of them can respond.
 > The async task will completed once a client receives and responds to the query.
 > Note that only one clients reply will be received. All other replies are discarded.
 ```csharp
@@ -222,4 +222,4 @@ internal class Program
 ```
 
 ## License
-[Apache-2.0](https://choosealicense.com/licenses/apache-2.0/)
+[MIT](https://choosealicense.com/licenses/mit/)

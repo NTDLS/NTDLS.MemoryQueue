@@ -2,15 +2,9 @@
 
 namespace ChatLibrary
 {
-    public class ChatMessage : IMqMessage
+    public class ChatMessage(Guid clientId, string? text) : IMqMessage
     {
-        public Guid ClientId { get; set; }
-        public string? Text { get; set; }
-
-        public ChatMessage(Guid clientId, string? text)
-        {
-            ClientId = clientId;
-            Text = text;
-        }
+        public Guid ClientId { get; set; } = clientId;
+        public string? Text { get; set; } = text;
     }
 }

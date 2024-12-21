@@ -50,7 +50,7 @@ namespace NTDLS.MemoryQueue.Engine
         }
 
         /// <summary>
-        /// Stops the distribution thread and shutsdown the queue.
+        /// Stops the distribution thread and shutdown the queue.
         /// </summary>
         /// <param name="waitForThreadToExit">Whether or not to wait on the distribution thread to exit after shutdown.</param>
         public void Shutdown(bool waitForThreadToExit)
@@ -77,7 +77,7 @@ namespace NTDLS.MemoryQueue.Engine
         /// <param name="queryId">The unique id of the query. Used to tie the query to the reply.</param>
         /// <param name="payloadJson">The json of the object which is the subject of the query.</param>
         /// <param name="payloadType">The original type of the payload.</param>
-        /// <param name="replyType">The type of the reply object. The json should be deserilizable to this type.</param>
+        /// <param name="replyType">The type of the reply object. The json should be de-serializable to this type.</param>
         public void AddQuery(Guid originationId, Guid queryId, string payloadJson, string payloadType, string replyType)
             => Messages.Use((o) => o.Add(new MqQueuedQuery(this, originationId, queryId, payloadJson, payloadType, replyType)));
 
@@ -88,7 +88,7 @@ namespace NTDLS.MemoryQueue.Engine
         /// <param name="queryId">The unique id of the query. Used to tie the query to the reply.</param>
         /// <param name="payloadJson">The json of the object which is the subject of the query-reply.</param>
         /// <param name="payloadType">The original type of the payload.</param>
-        /// <param name="replyType">The type of the reply object. The json should be deserilizable to this type.</param>
+        /// <param name="replyType">The type of the reply object. The json should be de-serializable to this type.</param>
         public void AddQueryReply(Guid originationId, Guid queryId, string payloadJson, string payloadType, string replyType)
             => Messages.Use((o) => o.Add(new MqQueuedQueryReply(this, originationId, queryId, payloadJson, payloadType, replyType)));
 

@@ -3,11 +3,8 @@
     /// <summary>
     /// Represents a "physical" message that is waiting in the queue.
     /// </summary>
-    internal class MqQueuedMessage : MqQueuedItemBase, IMqQueuedItem
+    internal class MqQueuedMessage(MqQueue queue, string payloadJson, string payloadType)
+        : MqQueuedItemBase(queue, payloadJson, payloadType), IMqQueuedItem
     {
-        public MqQueuedMessage(MqQueue queue, string payloadJson, string payloadType)
-            : base(queue, payloadJson, payloadType)
-        {
-        }
     }
 }

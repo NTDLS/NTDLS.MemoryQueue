@@ -23,7 +23,7 @@
             /// </summary>
             Warning,
             /// <summary>
-            /// An error has occured.
+            /// An error has occurred.
             /// </summary>
             Exception
         }

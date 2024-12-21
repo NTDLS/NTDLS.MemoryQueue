@@ -4,7 +4,7 @@ namespace ChatServer
 {
     internal class Program
     {
-        static void Main(string[] args)
+        static void Main()
         {
             var server = new MqServer();
 

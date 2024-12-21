@@ -41,9 +41,6 @@ namespace NTDLS.MemoryQueue.Engine
         /// <summary>
         /// Subscribes the specified connection the the specified queue name.
         /// </summary>
-        /// <param name="connectionId"></param>
-        /// <param name="queueName"></param>
-        /// <exception cref="Exception"></exception>
         public void Subscribe(Guid connectionId, string queueName)
         {
             if (TryGet(queueName, out var queue) == false)
@@ -57,9 +54,6 @@ namespace NTDLS.MemoryQueue.Engine
         /// <summary>
         /// Unsubscribes the specified connection the the specified queue name.
         /// </summary>
-        /// <param name="connectionId"></param>
-        /// <param name="queueName"></param>
-        /// <exception cref="Exception"></exception>
         public void Unsubscribe(Guid connectionId, string queueName)
         {
             if (TryGet(queueName, out var queue) == false)
@@ -73,11 +67,7 @@ namespace NTDLS.MemoryQueue.Engine
         /// <summary>
         /// Enqueues a message to the specified queue.
         /// </summary>
-        /// <param name="queueName"></param>
-        /// <param name="payloadJson"></param>
-        /// <param name="payloadType"></param>
-        /// <exception cref="Exception"></exception>
-        public void EqueueMessage(string queueName, string payloadJson, string payloadType)
+        public void EnqueueMessage(string queueName, string payloadJson, string payloadType)
         {
             if (TryGet(queueName, out var queue) == false)
             {
@@ -90,14 +80,7 @@ namespace NTDLS.MemoryQueue.Engine
         /// <summary>
         /// Enqueues a query (which expects a reply) to the specified queue.
         /// </summary>
-        /// <param name="originationId"></param>
-        /// <param name="queueName"></param>
-        /// <param name="queryId"></param>
-        /// <param name="payloadJson"></param>
-        /// <param name="payloadType"></param>
-        /// <param name="replyType"></param>
-        /// <exception cref="Exception"></exception>
-        public void EqueueQuery(Guid originationId, string queueName, Guid queryId, string payloadJson, string payloadType, string replyType)
+        public void EnqueueQuery(Guid originationId, string queueName, Guid queryId, string payloadJson, string payloadType, string replyType)
         {
             if (TryGet(queueName, out var queue) == false)
             {
@@ -108,16 +91,9 @@ namespace NTDLS.MemoryQueue.Engine
         }
 
         /// <summary>
-        /// Enqueues a query reply to the specifed queue. This reply will be routed to the connection with the originationId.
+        /// Enqueues a query reply to the specified queue. This reply will be routed to the connection with the originationId.
         /// </summary>
-        /// <param name="originationId"></param>
-        /// <param name="queueName"></param>
-        /// <param name="queryId"></param>
-        /// <param name="payloadJson"></param>
-        /// <param name="payloadType"></param>
-        /// <param name="replyType"></param>
-        /// <exception cref="Exception"></exception>
-        public void EqueueQueryReply(Guid originationId, string queueName, Guid queryId, string payloadJson, string payloadType, string replyType)
+        public void EnqueueQueryReply(Guid originationId, string queueName, Guid queryId, string payloadJson, string payloadType, string replyType)
         {
             if (TryGet(queueName, out var queue) == false)
             {
@@ -130,8 +106,6 @@ namespace NTDLS.MemoryQueue.Engine
         /// <summary>
         /// Creates a new queue.
         /// </summary>
-        /// <param name="config"></param>
-        /// <exception cref="Exception"></exception>
         public void Create(MqQueueConfiguration config)
         {
             if (Exists(config.Name))
@@ -146,7 +120,6 @@ namespace NTDLS.MemoryQueue.Engine
         /// <summary>
         /// Deletes an existing queue.
         /// </summary>
-        /// <param name="queueName"></param>
         public void Delete(string queueName)
         {
             if (TryGet(queueName, out var queue))
@@ -159,21 +132,16 @@ namespace NTDLS.MemoryQueue.Engine
         /// <summary>
         /// Attempts to get a queue by its name.
         /// </summary>
-        /// <param name="key"></param>
-        /// <param name="outQueu"></param>
-        /// <returns></returns>
-        public bool TryGet(string key, [NotNullWhen(true)] out MqQueue? outQueu)
+        public bool TryGet(string key, [NotNullWhen(true)] out MqQueue? outQueue)
         {
             key = key.ToLower();
-            outQueu = Queues.Where(o => o.Key == key).FirstOrDefault();
-            return outQueu != null;
+            outQueue = Queues.Where(o => o.Key == key).FirstOrDefault();
+            return outQueue != null;
         }
 
         /// <summary>
         /// Determines if a queue with the specified name exists.
         /// </summary>
-        /// <param name="key"></param>
-        /// <returns></returns>
         public bool Exists(string key)
         {
             key = key.ToLower();

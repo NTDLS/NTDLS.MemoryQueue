@@ -5,24 +5,18 @@ namespace NTDLS.MemoryQueue.Engine.QueueItems
     /// <summary>
     /// All items that can sit in the queue must inherit INmqQueuedItem.
     /// </summary>
-    internal class MqQueuedItemBase : IMqQueuedItem
+    internal class MqQueuedItemBase(MqQueue queue, string payloadJson, string payloadType)
+        : IMqQueuedItem
     {
         public DateTime CreatedDate { get; private set; } = DateTime.UtcNow;
-        public string PayloadJson { get; private set; }
-        public string PayloadType { get; private set; }
+        public string PayloadJson { get; private set; } = payloadJson;
+        public string PayloadType { get; private set; } = payloadType;
         public double AgeInSeconds => (DateTime.UtcNow - CreatedDate).TotalSeconds;
 
         /// <summary>
         /// The queue that ownes this item.
         /// </summary>
-        public MqQueue Queue { get; private set; }
-
-        public MqQueuedItemBase(MqQueue queue, string payloadJson, string payloadType)
-        {
-            Queue = queue;
-            PayloadJson = payloadJson;
-            PayloadType = payloadType;
-        }
+        public MqQueue Queue { get; private set; } = queue;
 
         /// <summary>
         /// A list of the subscribers that the message has been sent to or that have had too many retries.
@@ -78,10 +72,10 @@ namespace NTDLS.MemoryQueue.Engine.QueueItems
 
             return _distributionMetrics.Use((o) =>
             {
-                //Create a list of all of the successful, expired or exausted queue distributions.
+                //Create a list of all of the successful, expired or exhausted queue distributions.
                 var completeDistributions =
                     o.Where(o => o.Success == true //Successful
-                        || o.DistributionAttempts >= Queue.Configuration.MaxDistributionAttempts //exausted
+                        || o.DistributionAttempts >= Queue.Configuration.MaxDistributionAttempts //exhausted
                         ).Select(o => o.ConnectionId).ToHashSet();
 
                 return !subscribers.Except(completeDistributions).Any();
