@@ -30,10 +30,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Content Remove="C:\Users\ntdls\.nuget\packages\ntdls.streamframing\1.0.4\contentFiles\any\net6.0\Logo.ico" />
-  </ItemGroup>
-
-  <ItemGroup>
     <Content Include="Logo.ico" />
   </ItemGroup>
 
