@@ -9,7 +9,7 @@
     <Title>NTDLS.MemoryQueue</Title>
     <Copyright>Copyright © 2025 NetworkDLS</Copyright>
     <Description>
-      In memory non-persistent message queue intended for inter-process-communication, queuing, load-balancing and buffering over TCP/IP.
+      An in-memory, non-persistent message queue designed for efficient inter-process communication, task queuing, load balancing, and data buffering over TCP/IP
     </Description>
     <PackageProjectUrl>https://github.com/NTDLS/NTDLS.MemoryQueue</PackageProjectUrl>
     <RepositoryUrl>https://github.com/NTDLS/NTDLS.MemoryQueue</RepositoryUrl>
