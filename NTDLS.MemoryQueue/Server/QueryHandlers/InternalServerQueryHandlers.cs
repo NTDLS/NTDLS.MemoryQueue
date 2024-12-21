@@ -12,7 +12,7 @@ namespace NTDLS.MemoryQueue.Server.QueryHandlers
         {
             try
             {
-                _mqServer.CreateQueue(param.QueueName);
+                _mqServer.CreateQueue(param.QueueConfiguration);
                 return new CreateQueueQueryReply(true);
             }
             catch (Exception ex)

@@ -20,7 +20,7 @@ namespace TestHarness
             client.Subscribe("MyFirstQueue");
             client.OnReceived += Client_OnReceived;
 
-            for(int i = 0; i < 10; i++)//Send test messages as objects that inherit from IMqMessage
+            for (int i = 0; i < 10; i++)//Send test messages as objects that inherit from IMqMessage
             {
                 client.Enqueue("MyFirstQueue", new MyMessage($"Test message {i:n0}"));
             }

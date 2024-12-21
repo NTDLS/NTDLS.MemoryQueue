@@ -2,10 +2,10 @@
 
 namespace NTDLS.MemoryQueue.Payloads.Queries.ClientToServer
 {
-    internal class CreateQueueQuery(string queueName)
+    internal class CreateQueueQuery(MqQueueConfiguration queueConfiguration)
         : IRmQuery<CreateQueueQueryReply>
     {
-        public string QueueName { get; set; } = queueName;
+        public MqQueueConfiguration QueueConfiguration { get; set; } = queueConfiguration;
     }
 
     internal class CreateQueueQueryReply

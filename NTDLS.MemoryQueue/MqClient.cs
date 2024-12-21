@@ -39,6 +39,24 @@ namespace NTDLS.MemoryQueue
             _rmClient.AddHandler(new InternalClientQueryHandlers(this));
         }
 
+        /// <summary>
+        /// Creates a new instance of the queue service.
+        /// </summary>
+        public MqClient(MqClientConfiguration configuration)
+        {
+            var rmConfiguration = new RmConfiguration()
+            {
+                AsynchronousQueryWaiting = configuration.AsynchronousQueryWaiting,
+                InitialReceiveBufferSize = configuration.InitialReceiveBufferSize,
+                MaxReceiveBufferSize = configuration.MaxReceiveBufferSize,
+                QueryTimeout = configuration.QueryTimeout,
+                ReceiveBufferGrowthRate = configuration.ReceiveBufferGrowthRate
+            };
+
+            _rmClient = new RmClient(rmConfiguration);
+            _rmClient.AddHandler(new InternalClientQueryHandlers(this));
+        }
+
         internal bool InvokeOnReceived(MqClient client, IMqMessage message)
             => (OnReceived?.Invoke(client, message) == true);
 
@@ -65,7 +83,19 @@ namespace NTDLS.MemoryQueue
         /// </summary>
         public void CreateQueue(string queueName)
         {
-            var result = _rmClient.Query(new CreateQueueQuery(queueName)).Result;
+            var result = _rmClient.Query(new CreateQueueQuery(new MqQueueConfiguration(queueName))).Result;
+            if (result.IsSuccess == false)
+            {
+                throw new Exception(result.ErrorMessage);
+            }
+        }
+
+        /// <summary>
+        /// Instructs the server to create a queue with the given name.
+        /// </summary>
+        public void CreateQueue(MqQueueConfiguration queueConfiguration)
+        {
+            var result = _rmClient.Query(new CreateQueueQuery(queueConfiguration)).Result;
             if (result.IsSuccess == false)
             {
                 throw new Exception(result.ErrorMessage);

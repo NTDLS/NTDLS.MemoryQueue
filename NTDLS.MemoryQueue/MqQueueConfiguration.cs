@@ -3,30 +3,21 @@
     /// <summary>
     /// Defines a queue configuration.
     /// </summary>
-    public class MqQueueConfiguration
+    public class MqQueueConfiguration(string name)
     {
         /// <summary>
         /// The name of the queue.
         /// </summary>
-        public string Name { get; set; }
+        public string Name { get; set; } = name;
 
         /// <summary>
-        /// The maximum number of times the queue will attempt to distribute a message to a subscriber before giving up.
+        /// The maximum number of times the server will attempt to deliver any message to a subscriber before giving up.
         /// </summary>
-        public int MaxDistributionAttempts { get; set; } = 10;
+        public int MaxDeliveryAttempts { get; set; } = 10;
 
         /// <summary>
-        /// The maximum time in seconds that a item can remain in the queue without being delivered. 0 = infinite.
+        /// The maximum time that a message item can remain in the queue without being delivered before being removed. 0 = infinite.
         /// </summary>
-        public int MaxAgeInSeconds { get; set; } = 0;
-
-        /// <summary>
-        /// Constructs a default queue configuration.
-        /// </summary>
-        /// <param name="name"></param>
-        public MqQueueConfiguration(string name)
-        {
-            Name = name;
-        }
+        public TimeSpan MaxMessageAge { get; set; } = TimeSpan.Zero;
     }
 }

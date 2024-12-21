@@ -19,15 +19,27 @@ namespace NTDLS.MemoryQueue
         /// </summary>
         public MqServer()
         {
+            _rmServer = new RmServer();
+            _rmServer.AddHandler(new InternalServerQueryHandlers(this));
+            _rmServer.OnDisconnected += _rmServer_OnDisconnected;
+        }
+
+        /// <summary>
+        /// Creates a new instance of the queue service.
+        /// </summary>
+        public MqServer(MqServerConfiguration configuration)
+        {
             var rmConfiguration = new RmConfiguration()
             {
-                //TODO: implement some settings.
+                AsynchronousQueryWaiting = configuration.AsynchronousQueryWaiting,
+                InitialReceiveBufferSize = configuration.InitialReceiveBufferSize,
+                MaxReceiveBufferSize = configuration.MaxReceiveBufferSize,
+                QueryTimeout = configuration.QueryTimeout,
+                ReceiveBufferGrowthRate = configuration.ReceiveBufferGrowthRate
             };
 
             _rmServer = new RmServer(rmConfiguration);
-
             _rmServer.AddHandler(new InternalServerQueryHandlers(this));
-
             _rmServer.OnDisconnected += _rmServer_OnDisconnected;
         }
 
@@ -77,14 +89,14 @@ namespace NTDLS.MemoryQueue
         /// <summary>
         /// Creates a new empty queue if it does not already exist.
         /// </summary>
-        internal void CreateQueue(string queueName)
+        internal void CreateQueue(MqQueueConfiguration queueConfiguration)
         {
             _messageQueues.Use(o =>
             {
-                string queueKey = queueName.ToLowerInvariant();
+                string queueKey = queueConfiguration.Name.ToLowerInvariant();
                 if (o.ContainsKey(queueKey) == false)
                 {
-                    var messageQueue = new MessageQueue(this, queueName);
+                    var messageQueue = new MessageQueue(this, queueConfiguration);
                     messageQueue.Start();
                     o.Add(queueKey, messageQueue);
                 }

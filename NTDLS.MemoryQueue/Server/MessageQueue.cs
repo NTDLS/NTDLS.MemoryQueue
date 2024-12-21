@@ -3,16 +3,26 @@ using NTDLS.Semaphore;
 
 namespace NTDLS.MemoryQueue.Server
 {
-    internal class MessageQueue(MqServer mqServer, string name)
+    /// <summary>
+    /// A named message queue and its delivery thread.
+    /// </summary>
+    internal class MessageQueue(MqServer mqServer, MqQueueConfiguration queueConfiguration)
     {
         internal AutoResetEvent DeliveryThreadWaitEvent = new(false);
 
         private readonly MqServer QueueServer = mqServer;
         public bool KeepRunning { get; set; } = true;
 
+        /// <summary>
+        /// List of subscriber connection IDs.
+        /// </summary>
         public PessimisticCriticalResource<HashSet<Guid>> Subscribers { get; set; } = new();
+
+        /// <summary>
+        /// Messages that are enqueued in this message queue.
+        /// </summary>
         public PessimisticCriticalResource<List<EnqueuedMessage>> EnqueuedMessages { get; set; } = new();
-        public string Name { get; set; } = name;
+        public MqQueueConfiguration QueueConfiguration { get; private set; } = queueConfiguration;
         public Thread DeliveryThread = new Thread(DeliveryThreadProc);
 
         private static void DeliveryThreadProc(object? pMessageQueue)
@@ -51,7 +61,7 @@ namespace NTDLS.MemoryQueue.Server
                     {
                         foreach (var subscriberId in yetToBeDeliveredSubscribers)
                         {
-                            if (messageQueue.QueueServer.DeliverMessage(subscriberId, messageQueue.Name, topMessage))
+                            if (messageQueue.QueueServer.DeliverMessage(subscriberId, messageQueue.QueueConfiguration.Name, topMessage))
                             {
                                 //This thread is the only place we manage [SentToSubscriber], so we can use it without additional locking.
                                 topMessage.DeliveredSubscriberConnectionIDs.Add(subscriberId);

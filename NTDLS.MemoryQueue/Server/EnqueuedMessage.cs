@@ -1,5 +1,10 @@
 ﻿namespace NTDLS.MemoryQueue.Server
 {
+    /// <summary>
+    /// A message that is in the queue and waiting to be delivered to all subscribers.
+    /// </summary>
+    /// <param name="objectType"></param>
+    /// <param name="messageJson"></param>
     internal class EnqueuedMessage(string objectType, string messageJson)
     {
         /// <summary>
