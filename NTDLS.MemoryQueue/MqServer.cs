@@ -13,12 +13,14 @@ namespace NTDLS.MemoryQueue
     {
         private readonly RmServer _rmServer;
         private readonly PessimisticCriticalResource<Dictionary<string, MessageQueue>> _messageQueues = new();
+        private MqServerConfiguration _configuration;
 
         /// <summary>
         /// Creates a new instance of the queue service.
         /// </summary>
         public MqServer()
         {
+            _configuration = new MqServerConfiguration();
             _rmServer = new RmServer();
             _rmServer.AddHandler(new InternalServerQueryHandlers(this));
             _rmServer.OnDisconnected += _rmServer_OnDisconnected;
@@ -29,6 +31,8 @@ namespace NTDLS.MemoryQueue
         /// </summary>
         public MqServer(MqServerConfiguration configuration)
         {
+            _configuration = configuration;
+
             var rmConfiguration = new RmConfiguration()
             {
                 AsynchronousQueryWaiting = configuration.AsynchronousQueryWaiting,

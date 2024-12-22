@@ -12,6 +12,12 @@ namespace NTDLS.MemoryQueue
     public class MqClient
     {
         private readonly RmClient _rmClient;
+        private bool _explicitDisconnect = false;
+        private MqClientConfiguration _configuration;
+
+        private string? _lastReconnectHost;
+        private int _lastReconnectPort;
+        private IPAddress? _lastReconnectIpAddress;
 
         /// <summary>
         /// Delegate used for server-to-client delivery notifications.
@@ -20,22 +26,37 @@ namespace NTDLS.MemoryQueue
         public delegate bool OnReceivedEvent(MqClient client, IMqMessage message);
 
         /// <summary>
-        /// Delegate used for server-to-client delivery notifications.
+        /// Event used for server-to-client delivery notifications.
         /// </summary>
         /// <returns>Return true to mark the message as consumed by the client.</returns>
         public event OnReceivedEvent? OnReceived;
+
+        /// <summary>
+        /// Delegate used client connectivity notifications.
+        /// </summary>
+        public delegate void OnConnectedEvent(MqClient client);
+
+        /// <summary>
+        /// Event used client connectivity notifications.
+        /// </summary>
+        public event OnConnectedEvent? OnConnected;
+
+        /// <summary>
+        /// Event used client connectivity notifications.
+        /// </summary>
+        public event OnConnectedEvent? OnDisconnected;
 
         /// <summary>
         /// Creates a new instance of the queue client.
         /// </summary>
         public MqClient()
         {
-            var rmConfiguration = new RmConfiguration()
-            {
-                //TODO: implement some settings.
-            };
+            _configuration = new MqClientConfiguration();
+            _rmClient = new RmClient();
 
-            _rmClient = new RmClient(rmConfiguration);
+            _rmClient.OnConnected += RmClient_OnConnected;
+            _rmClient.OnDisconnected += RmClient_OnDisconnected;
+
             _rmClient.AddHandler(new InternalClientQueryHandlers(this));
         }
 
@@ -44,6 +65,8 @@ namespace NTDLS.MemoryQueue
         /// </summary>
         public MqClient(MqClientConfiguration configuration)
         {
+            _configuration = configuration;
+
             var rmConfiguration = new RmConfiguration()
             {
                 AsynchronousQueryWaiting = configuration.AsynchronousQueryWaiting,
@@ -57,6 +80,40 @@ namespace NTDLS.MemoryQueue
             _rmClient.AddHandler(new InternalClientQueryHandlers(this));
         }
 
+        private void RmClient_OnConnected(RmContext context)
+        {
+            OnConnected?.Invoke(this);
+        }
+
+        private void RmClient_OnDisconnected(RmContext context)
+        {
+            OnDisconnected?.Invoke(this);
+
+            if (_explicitDisconnect == false && _configuration.AutoReconnect)
+            {
+                new Thread((o) =>
+                {
+                    while (!_explicitDisconnect && !_rmClient.IsConnected)
+                    {
+                        if (_lastReconnectHost != null)
+                        {
+                            _rmClient.Connect(_lastReconnectHost, _lastReconnectPort);
+                        }
+                        else if (_lastReconnectIpAddress != null)
+                        {
+                            _rmClient.Connect(_lastReconnectIpAddress, _lastReconnectPort);
+                        }
+                        else
+                        {
+                            break; //What else can we do.
+                        }
+
+                        Thread.Sleep(1000);
+                    }
+                }).Start();
+            }
+        }
+
         internal bool InvokeOnReceived(MqClient client, IMqMessage message)
             => (OnReceived?.Invoke(client, message) == true);
 
@@ -64,19 +121,38 @@ namespace NTDLS.MemoryQueue
         /// Connects the client to a queue server.
         /// </summary>
         public void Connect(string hostName, int port)
-            => _rmClient.Connect(hostName, port);
+        {
+            _lastReconnectHost = hostName;
+            _lastReconnectIpAddress = null;
+            _lastReconnectPort = port;
+
+            _explicitDisconnect = false;
+
+            _rmClient.Connect(hostName, port);
+        }
 
         /// <summary>
         /// Connects the client to a queue server.
         /// </summary>
         public void Connect(IPAddress ipAddress, int port)
-            => _rmClient.Connect(ipAddress, port);
+        {
+            _lastReconnectHost = null;
+            _lastReconnectIpAddress = ipAddress;
+            _lastReconnectPort = port;
+
+            _explicitDisconnect = false;
+
+            _rmClient.Connect(ipAddress, port);
+        }
 
         /// <summary>
         /// Disconnects the client from the queue server.
         /// </summary>
         public void Disconnect(bool wait = false)
-            => _rmClient.Disconnect(wait);
+        {
+            _explicitDisconnect = true;
+            _rmClient.Disconnect(wait);
+        }
 
         /// <summary>
         /// Instructs the server to create a queue with the given name.
