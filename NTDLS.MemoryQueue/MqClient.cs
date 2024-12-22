@@ -77,6 +77,16 @@ namespace NTDLS.MemoryQueue
         public event OnConnectedEvent? OnDisconnected;
 
         /// <summary>
+        /// Delegate used to notify of queue client exceptions.
+        /// </summary>
+        public delegate void OnExceptionEvent(MqClient client, MqQueueConfiguration? queue, Exception ex);
+
+        /// <summary>
+        /// Event used to notify of queue client exceptions.
+        /// </summary>
+        public event OnExceptionEvent? OnException;
+
+        /// <summary>
         /// Creates a new instance of the queue client.
         /// </summary>
         public MqClient()
@@ -141,8 +151,9 @@ namespace NTDLS.MemoryQueue
                                 break; //What else can we do.
                             }
                         }
-                        catch
+                        catch (Exception ex)
                         {
+                            OnException?.Invoke(this, null, ex);
                         }
 
                         Thread.Sleep(1000);
@@ -153,6 +164,9 @@ namespace NTDLS.MemoryQueue
 
         internal bool InvokeOnReceived(MqClient client, IMqMessage message)
             => (OnReceived?.Invoke(client, message) == true);
+
+        internal void InvokeOnException(MqClient client, MqQueueConfiguration? queue, Exception ex)
+            => OnException?.Invoke(client, queue, ex);
 
         /// <summary>
         /// Connects the client to a queue server.

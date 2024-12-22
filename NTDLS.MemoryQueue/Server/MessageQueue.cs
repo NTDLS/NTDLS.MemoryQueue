@@ -1,6 +1,5 @@
 ﻿using NTDLS.Helpers;
 using NTDLS.Semaphore;
-using System.Collections.Generic;
 using static NTDLS.MemoryQueue.MqClient;
 
 namespace NTDLS.MemoryQueue.Server
@@ -42,21 +41,23 @@ namespace NTDLS.MemoryQueue.Server
                     EnqueuedMessage? topMessage = null;
                     List<Guid>? yetToBeDeliveredSubscribers = null;
 
-                    messageQueue.EnqueuedMessages.UseAll([messageQueue.Subscribers], m =>
+                    #region Get message and its subscribers.
+
+                    messageQueue.EnqueuedMessages.TryUseAll([messageQueue.Subscribers], m =>
                     {
-                        if (messageQueue.QueueConfiguration.MaxMessageAge > TimeSpan.Zero
+                        messageQueue.Subscribers.Use(s => //This lock is already held.
+                        {
+                            if (messageQueue.QueueConfiguration.MaxMessageAge > TimeSpan.Zero
                             && (DateTime.UtcNow - lastStaleMessageScan).TotalSeconds >= 10)
-                        {
-                            //If MaxMessageAge is defined, then remove stale messages.
-                            m.RemoveAll(o => (DateTime.UtcNow - o.Timestamp) > messageQueue.QueueConfiguration.MaxMessageAge);
+                            {
+                                //If MaxMessageAge is defined, then remove stale messages.
+                                m.RemoveAll(o => (DateTime.UtcNow - o.Timestamp) > messageQueue.QueueConfiguration.MaxMessageAge);
 
-                            //There could be a lot of messages in the queue, so lets use lastStaleMessageScan
-                            //  to not needlessly compare the timestamps each-and-every loop.
-                            lastStaleMessageScan = DateTime.UtcNow;
-                        }
+                                //There could be a lot of messages in the queue, so lets use lastStaleMessageScan
+                                //  to not needlessly compare the timestamps each-and-every loop.
+                                lastStaleMessageScan = DateTime.UtcNow;
+                            }
 
-                        messageQueue.Subscribers.Use(s =>
-                        {
                             //We only process a queue if it has subscribers.
                             //This is so we do not discard messages as delivered for queues with no subscribers.
                             if (s.Count > 0)
@@ -67,20 +68,24 @@ namespace NTDLS.MemoryQueue.Server
                                 {
                                     //Get list of subscribers that have yet to get a copy of the message.
                                     yetToBeDeliveredSubscribers = s.Except(topMessage.SatisfiedSubscribersConnectionIDs).ToList();
+
+                                    if (messageQueue.QueueConfiguration.DeliveryScheme == DeliveryScheme.Random)
+                                    {
+                                        yetToBeDeliveredSubscribers = yetToBeDeliveredSubscribers.OrderBy(_ => Guid.NewGuid()).ToList();
+                                    }
                                 }
                             }
                         });
                     });
+
+                    #endregion
 
                     //We we have a message, deliver it to the queue subscribers.
                     if (topMessage != null && yetToBeDeliveredSubscribers != null)
                     {
                         bool successfulDeliveryAndConsume = false;
 
-                        if (messageQueue.QueueConfiguration.DeliveryScheme == DeliveryScheme.Random)
-                        {
-                            yetToBeDeliveredSubscribers = yetToBeDeliveredSubscribers.OrderBy(_ => Guid.NewGuid()).ToList();
-                        }
+                        #region Deliver message to subscibers.
 
                         foreach (var subscriberId in yetToBeDeliveredSubscribers)
                         {
@@ -102,9 +107,9 @@ namespace NTDLS.MemoryQueue.Server
                                     break;
                                 }
                             }
-                            catch
+                            catch (Exception ex) //Delivery failure.
                             {
-                                //Delivery failure.
+                                messageQueue.QueueServer.InvokeOnException(messageQueue.QueueServer, messageQueue.QueueConfiguration, ex);
                             }
 
                             //Keep track of per-message-subscriber delivery metrics.
@@ -126,31 +131,33 @@ namespace NTDLS.MemoryQueue.Server
                             }
                         }
 
+                        #endregion
+
+                        #region Remove message from queue.
+
                         messageQueue.EnqueuedMessages.UseAll([messageQueue.Subscribers], m =>
                         {
-                            messageQueue.Subscribers.Use(s =>
+                            messageQueue.Subscribers.Use(s => //This lock is already held.
                             {
                                 if (successfulDeliveryAndConsume && messageQueue.QueueConfiguration.ConsumptionScheme == ConsumptionScheme.FirstConsumedSubscriber)
                                 {
                                     //The message was consumed by a subscriber, remove it from the message list.
                                     m.Remove(topMessage);
                                 }
-                                else
+                                else if (s.Except(topMessage.SatisfiedSubscribersConnectionIDs).Any() == false)
                                 {
-                                    //If all all message-subscribers are satisfied (delivered or max attempts reached), then remove the message.
-                                    if (s.Except(topMessage.SatisfiedSubscribersConnectionIDs).Any() == false)
-                                    {
-                                        //If the message has been delivered to all subscribers, then remove it from the message list.
-                                        m.Remove(topMessage);
-                                    }
+                                    //If all subscribers are satisfied (delivered or max attempts reached), then remove the message.
+                                    m.Remove(topMessage);
                                 }
                             });
                         });
+
+                        #endregion
                     }
                 }
                 catch (Exception ex)
                 {
-                    //TODO handle delivery exceptions.
+                    messageQueue.QueueServer.InvokeOnException(messageQueue.QueueServer, messageQueue.QueueConfiguration, ex);
                 }
 
                 if (successfulDeliveries == 0)

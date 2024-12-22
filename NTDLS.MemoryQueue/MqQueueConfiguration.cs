@@ -31,6 +31,5 @@ namespace NTDLS.MemoryQueue
         /// Determines how messages are distributed to subscribers.
         /// </summary>
         public DeliveryScheme DeliveryScheme { get; set; } = DeliveryScheme.Random;
-
     }
 }

@@ -16,6 +16,16 @@ namespace NTDLS.MemoryQueue
         private MqServerConfiguration _configuration;
 
         /// <summary>
+        /// Delegate used to notify of queue server exceptions.
+        /// </summary>
+        public delegate void OnExceptionEvent(MqServer server, MqQueueConfiguration? queue, Exception ex);
+
+        /// <summary>
+        /// Event used to notify of queue server exceptions.
+        /// </summary>
+        public event OnExceptionEvent? OnException;
+
+        /// <summary>
         /// Creates a new instance of the queue service.
         /// </summary>
         public MqServer()
@@ -23,7 +33,7 @@ namespace NTDLS.MemoryQueue
             _configuration = new MqServerConfiguration();
             _rmServer = new RmServer();
             _rmServer.AddHandler(new InternalServerQueryHandlers(this));
-            _rmServer.OnDisconnected += _rmServer_OnDisconnected;
+            _rmServer.OnDisconnected += RmServer_OnDisconnected;
         }
 
         /// <summary>
@@ -44,10 +54,13 @@ namespace NTDLS.MemoryQueue
 
             _rmServer = new RmServer(rmConfiguration);
             _rmServer.AddHandler(new InternalServerQueryHandlers(this));
-            _rmServer.OnDisconnected += _rmServer_OnDisconnected;
+            _rmServer.OnDisconnected += RmServer_OnDisconnected;
         }
 
-        private void _rmServer_OnDisconnected(RmContext context)
+        internal void InvokeOnException(MqServer server, MqQueueConfiguration? queue, Exception ex)
+            => OnException?.Invoke(server, queue, ex);
+
+        private void RmServer_OnDisconnected(RmContext context)
         {
             //When a client disconnects, remove their subscriptions.
             _messageQueues.Use(mq =>
