@@ -12,9 +12,9 @@ namespace NTDLS.MemoryQueue
     public class MqClient
     {
         /// <summary>
-        /// Determines how messages are distributed to subscribers.
+        /// Determines when to remove messages from the queue as they are distributed to subscribers.
         /// </summary>
-        public enum DeliveryScheme
+        public enum ConsumptionScheme
         {
             /// <summary>
             /// The messages are delivered to each subscriber, the message is removed once it is delivered to all subscribers even if they do not consume it.
@@ -24,6 +24,21 @@ namespace NTDLS.MemoryQueue
             /// The messages are delivered to each subscriber, but is removed when any one of the subscribers consumes the message.
             /// </summary>
             FirstConsumedSubscriber
+        }
+
+        /// <summary>
+        /// Determines how messages are distributed to subscribers.
+        /// </summary>
+        public enum DeliveryScheme
+        {
+            /// <summary>
+            /// Messages are delivered to the subscribers in the order which they were subscribed.
+            /// </summary>
+            RoundRobbin,
+            /// <summary>
+            /// Messages are delivered to subscribers in a random order.
+            /// </summary>
+            Random
         }
 
         private readonly RmClient _rmClient;

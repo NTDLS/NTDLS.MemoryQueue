@@ -23,8 +23,14 @@ namespace NTDLS.MemoryQueue
         public TimeSpan MaxMessageAge { get; set; } = TimeSpan.Zero;
 
         /// <summary>
+        /// Determines when to remove messages from the queue as they are distributed to subscribers.
+        /// </summary>
+        public ConsumptionScheme ConsumptionScheme { get; set; } = ConsumptionScheme.SuccessfulDeliveryToAllSubscribers;
+
+        /// <summary>
         /// Determines how messages are distributed to subscribers.
         /// </summary>
-        public DeliveryScheme DeliveryScheme { get; set; } = DeliveryScheme.SuccessfulDeliveryToAllSubscribers;
+        public DeliveryScheme DeliveryScheme { get; set; } = DeliveryScheme.Random;
+
     }
 }
