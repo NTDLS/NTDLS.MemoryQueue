@@ -1,5 +1,6 @@
 ﻿using NTDLS.Helpers;
 using NTDLS.Semaphore;
+using static NTDLS.MemoryQueue.MqClient;
 
 namespace NTDLS.MemoryQueue.Server
 {
@@ -70,13 +71,31 @@ namespace NTDLS.MemoryQueue.Server
                     //We we have a message, deliver it to the queue subscribers.
                     if (topMessage != null && yetToBeDeliveredSubscribers != null)
                     {
+                        bool successfulDeliveryAndConsume = false;
+
                         foreach (var subscriberId in yetToBeDeliveredSubscribers)
                         {
-                            if (messageQueue.QueueServer.DeliverMessage(subscriberId, messageQueue.QueueConfiguration.QueueName, topMessage))
+                            try
                             {
+                                if (messageQueue.QueueServer.DeliverMessage(subscriberId, messageQueue.QueueConfiguration.QueueName, topMessage))
+                                {
+                                    successfulDeliveryAndConsume = true;
+                                }
+
                                 //This thread is the only place we manage [SatisfiedSubscribersConnectionIDs], so we can use it without additional locking.
                                 topMessage.SatisfiedSubscribersConnectionIDs.Add(subscriberId);
                                 successfulDeliveries++;
+
+                                if (successfulDeliveryAndConsume
+                                    && messageQueue.QueueConfiguration.DeliveryScheme == DeliveryScheme.FirstConsumedSubscriber)
+                                {
+                                    //Message was delivered and consumed, break the delivery loop so the message can be removed from the queue.
+                                    break;
+                                }
+                            }
+                            catch
+                            {
+                                //Delivery failure.
                             }
 
                             //Keep track of per-message-subscriber delivery metrics.
@@ -102,11 +121,19 @@ namespace NTDLS.MemoryQueue.Server
                         {
                             messageQueue.Subscribers.Use(s =>
                             {
-                                //If the all message-subscribers are satisfied, then remove the message.
-                                if (s.Except(topMessage.SatisfiedSubscribersConnectionIDs).Any() == false)
+                                if (successfulDeliveryAndConsume && messageQueue.QueueConfiguration.DeliveryScheme == DeliveryScheme.FirstConsumedSubscriber)
                                 {
-                                    //If the message has been delivered to all subscribers, then remove it from the message list.
+                                    //The message was consumed by a subscriber, remove it from the message list.
                                     m.Remove(topMessage);
+                                }
+                                else
+                                {
+                                    //If all all message-subscribers are satisfied (delivered or max attempts reached), then remove the message.
+                                    if (s.Except(topMessage.SatisfiedSubscribersConnectionIDs).Any() == false)
+                                    {
+                                        //If the message has been delivered to all subscribers, then remove it from the message list.
+                                        m.Remove(topMessage);
+                                    }
                                 }
                             });
                         });

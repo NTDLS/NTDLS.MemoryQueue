@@ -32,6 +32,9 @@
         /// </summary>
         public Dictionary<Guid, SubscriberMessageDelivery> SubscriberMessageDeliveries { get; set; } = new();
 
+        /// <summary>
+        /// List of subscribers which have been delivered to or for which the retry-attempts have been reached.
+        /// </summary>
         public HashSet<Guid> SatisfiedSubscribersConnectionIDs { get; set; } = new();
     }
 }

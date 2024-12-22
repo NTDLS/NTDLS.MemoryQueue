@@ -11,6 +11,21 @@ namespace NTDLS.MemoryQueue
     /// </summary>
     public class MqClient
     {
+        /// <summary>
+        /// Determines how messages are distributed to subscribers.
+        /// </summary>
+        public enum DeliveryScheme
+        {
+            /// <summary>
+            /// The messages are delivered to each subscriber, the message is removed once it is delivered to all subscribers even if they do not consume it.
+            /// </summary>
+            SuccessfulDeliveryToAllSubscribers,
+            /// <summary>
+            /// The messages are delivered to each subscriber, but is removed when any one of the subscribers consumes the message.
+            /// </summary>
+            FirstConsumedSubscriber
+        }
+
         private readonly RmClient _rmClient;
         private bool _explicitDisconnect = false;
         private MqClientConfiguration _configuration;
@@ -82,6 +97,7 @@ namespace NTDLS.MemoryQueue
 
         private void RmClient_OnConnected(RmContext context)
         {
+            _explicitDisconnect = false;
             OnConnected?.Invoke(this);
         }
 
@@ -95,17 +111,23 @@ namespace NTDLS.MemoryQueue
                 {
                     while (!_explicitDisconnect && !_rmClient.IsConnected)
                     {
-                        if (_lastReconnectHost != null)
+                        try
                         {
-                            _rmClient.Connect(_lastReconnectHost, _lastReconnectPort);
+                            if (_lastReconnectHost != null)
+                            {
+                                _rmClient.Connect(_lastReconnectHost, _lastReconnectPort);
+                            }
+                            else if (_lastReconnectIpAddress != null)
+                            {
+                                _rmClient.Connect(_lastReconnectIpAddress, _lastReconnectPort);
+                            }
+                            else
+                            {
+                                break; //What else can we do.
+                            }
                         }
-                        else if (_lastReconnectIpAddress != null)
+                        catch
                         {
-                            _rmClient.Connect(_lastReconnectIpAddress, _lastReconnectPort);
-                        }
-                        else
-                        {
-                            break; //What else can we do.
                         }
 
                         Thread.Sleep(1000);

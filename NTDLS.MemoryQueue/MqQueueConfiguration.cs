@@ -1,4 +1,6 @@
-﻿namespace NTDLS.MemoryQueue
+﻿using static NTDLS.MemoryQueue.MqClient;
+
+namespace NTDLS.MemoryQueue
 {
     /// <summary>
     /// Defines a queue configuration.
@@ -19,5 +21,10 @@
         /// The maximum time that a message item can remain in the queue without being delivered before being removed. 0 = infinite.
         /// </summary>
         public TimeSpan MaxMessageAge { get; set; } = TimeSpan.Zero;
+
+        /// <summary>
+        /// Determines how messages are distributed to subscribers.
+        /// </summary>
+        public DeliveryScheme DeliveryScheme { get; set; } = DeliveryScheme.SuccessfulDeliveryToAllSubscribers;
     }
 }
