@@ -11,7 +11,7 @@ namespace NTDLS.MemoryQueue.Client.QueryHandlers
     {
         private static readonly PessimisticCriticalResource<Dictionary<string, MethodInfo>> _reflectionCache = new();
 
-        private static readonly JsonSerializerSettings _jsonSettings = new()
+        private static readonly JsonSerializerSettings _typeNameHandlingAll = new()
         {
             TypeNameHandling = TypeNameHandling.All
         };
@@ -20,7 +20,7 @@ namespace NTDLS.MemoryQueue.Client.QueryHandlers
         /// Deserialization function called from MessageDeliveryQuery via reflection.
         /// </summary>
         public static T? MqDeserializeToObject<T>(string json)
-            => JsonConvert.DeserializeObject<T>(json, _jsonSettings);
+            => JsonConvert.DeserializeObject<T>(json, _typeNameHandlingAll);
 
         public MessageDeliveryQueryReply MessageDeliveryQuery(RmContext context, MessageDeliveryQuery param)
         {
@@ -67,7 +67,7 @@ namespace NTDLS.MemoryQueue.Client.QueryHandlers
             }
             catch (Exception ex)
             {
-                return new MessageDeliveryQueryReply(ex);
+                return new MessageDeliveryQueryReply(ex.GetBaseException());
             }
         }
     }

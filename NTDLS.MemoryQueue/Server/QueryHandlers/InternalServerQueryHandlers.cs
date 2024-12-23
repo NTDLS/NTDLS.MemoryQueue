@@ -17,7 +17,7 @@ namespace NTDLS.MemoryQueue.Server.QueryHandlers
             }
             catch (Exception ex)
             {
-                return new CreateQueueQueryReply(ex);
+                return new CreateQueueQueryReply(ex.GetBaseException());
             }
         }
 
@@ -30,7 +30,7 @@ namespace NTDLS.MemoryQueue.Server.QueryHandlers
             }
             catch (Exception ex)
             {
-                return new DeleteQueueQueryReply(ex);
+                return new DeleteQueueQueryReply(ex.GetBaseException());
             }
         }
 
@@ -43,7 +43,7 @@ namespace NTDLS.MemoryQueue.Server.QueryHandlers
             }
             catch (Exception ex)
             {
-                return new SubscribeToQueueQueryReply(ex);
+                return new SubscribeToQueueQueryReply(ex.GetBaseException());
             }
         }
 
@@ -56,7 +56,7 @@ namespace NTDLS.MemoryQueue.Server.QueryHandlers
             }
             catch (Exception ex)
             {
-                return new UnsubscribeFromQueueQueryReply(ex);
+                return new UnsubscribeFromQueueQueryReply(ex.GetBaseException());
             }
         }
 
@@ -69,7 +69,7 @@ namespace NTDLS.MemoryQueue.Server.QueryHandlers
             }
             catch (Exception ex)
             {
-                return new EnqueueMessageToQueueReply(ex);
+                return new EnqueueMessageToQueueReply(ex.GetBaseException());
             }
         }
     }

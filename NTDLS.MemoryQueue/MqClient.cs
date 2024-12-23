@@ -11,6 +11,11 @@ namespace NTDLS.MemoryQueue
     /// </summary>
     public class MqClient
     {
+        private static readonly JsonSerializerSettings _typeNameHandlingAll = new()
+        {
+            TypeNameHandling = TypeNameHandling.All
+        };
+
         /// <summary>
         /// Determines when to remove messages from the queue as they are distributed to subscribers.
         /// </summary>
@@ -153,7 +158,7 @@ namespace NTDLS.MemoryQueue
                         }
                         catch (Exception ex)
                         {
-                            OnException?.Invoke(this, null, ex);
+                            OnException?.Invoke(this, null, ex.GetBaseException());
                         }
 
                         Thread.Sleep(1000);
@@ -271,8 +276,7 @@ namespace NTDLS.MemoryQueue
         public void Enqueue<T>(string queueName, T message)
             where T : IMqMessage
         {
-            var messageJson = JsonConvert.SerializeObject(message);
-
+            var messageJson = JsonConvert.SerializeObject(message, _typeNameHandlingAll);
             var objectType = message.GetType()?.AssemblyQualifiedName ?? string.Empty;
 
             var result = _rmClient.Query(new EnqueueMessageToQueue(queueName, objectType, messageJson)).Result;

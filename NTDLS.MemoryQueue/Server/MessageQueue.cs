@@ -109,7 +109,7 @@ namespace NTDLS.MemoryQueue.Server
                             }
                             catch (Exception ex) //Delivery failure.
                             {
-                                messageQueue.QueueServer.InvokeOnException(messageQueue.QueueServer, messageQueue.QueueConfiguration, ex);
+                                messageQueue.QueueServer.InvokeOnException(messageQueue.QueueServer, messageQueue.QueueConfiguration, ex.GetBaseException());
                             }
 
                             //Keep track of per-message-subscriber delivery metrics.
@@ -157,7 +157,7 @@ namespace NTDLS.MemoryQueue.Server
                 }
                 catch (Exception ex)
                 {
-                    messageQueue.QueueServer.InvokeOnException(messageQueue.QueueServer, messageQueue.QueueConfiguration, ex);
+                    messageQueue.QueueServer.InvokeOnException(messageQueue.QueueServer, messageQueue.QueueConfiguration, ex.GetBaseException());
                 }
 
                 if (successfulDeliveries == 0)
