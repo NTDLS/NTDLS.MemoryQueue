@@ -1,13 +1,13 @@
-﻿namespace NTDLS.MemoryQueue
+﻿namespace NTDLS.MemoryQueue.Management
 {
     /// <summary>
     /// Contains readonly information about messages.
     /// </summary>
-    public class EnqueuedMessageInformation
+    public class MqEnqueuedMessageInformation
     {
         /// <summary>
-             /// The unique ID of the message.
-             /// </summary>
+        /// The unique ID of the message.
+        /// </summary>
         public Guid MessageId { get; internal set; } = Guid.NewGuid();
 
         /// <summary>

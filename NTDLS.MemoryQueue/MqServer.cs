@@ -1,4 +1,5 @@
-﻿using NTDLS.MemoryQueue.Payloads.Queries.ServerToClient;
+﻿using NTDLS.MemoryQueue.Management;
+using NTDLS.MemoryQueue.Payloads.Queries.ServerToClient;
 using NTDLS.MemoryQueue.Server;
 using NTDLS.MemoryQueue.Server.QueryHandlers;
 using NTDLS.ReliableMessaging;
@@ -63,7 +64,7 @@ namespace NTDLS.MemoryQueue
         /// Returns a read-only copy of the running configuration.
         /// </summary>
         /// <returns></returns>
-        public MqReadonlyServerConfiguration GetConfiguration()
+        public MqServerInformation GetConfiguration()
         {
             return _configuration.ReadonlyClone();
         }
@@ -164,12 +165,12 @@ namespace NTDLS.MemoryQueue
         /// Returns a read-only copy messages in the queue.
         /// </summary>
         /// <returns></returns>
-        public ReadOnlyCollection<EnqueuedMessageInformation> GetQueueMessages(string queueName, int offset, int take)
+        public ReadOnlyCollection<MqEnqueuedMessageInformation> GetQueueMessages(string queueName, int offset, int take)
         {
             while (true)
             {
                 bool success = false;
-                var result = new List<EnqueuedMessageInformation>();
+                var result = new List<MqEnqueuedMessageInformation>();
 
                 success = _messageQueues.TryUse(mq =>
                 {
@@ -181,7 +182,7 @@ namespace NTDLS.MemoryQueue
                         {
                             foreach (var message in m.Skip(offset).Take(take))
                             {
-                                result.Add(new EnqueuedMessageInformation
+                                result.Add(new MqEnqueuedMessageInformation
                                 {
                                     Timestamp = message.Timestamp,
                                     SubscriberMessageDeliveries = message.SubscriberMessageDeliveries.Keys.ToHashSet(),
@@ -203,7 +204,7 @@ namespace NTDLS.MemoryQueue
 
                 if (success)
                 {
-                    return new ReadOnlyCollection<EnqueuedMessageInformation>(result);
+                    return new ReadOnlyCollection<MqEnqueuedMessageInformation>(result);
                 }
 
                 Thread.Sleep(1); //Failed to lock, sleep then try again.

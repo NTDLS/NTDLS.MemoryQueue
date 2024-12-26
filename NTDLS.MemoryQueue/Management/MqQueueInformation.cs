@@ -1,6 +1,6 @@
 ﻿using static NTDLS.MemoryQueue.MqClient;
 
-namespace NTDLS.MemoryQueue
+namespace NTDLS.MemoryQueue.Management
 {
     /// <summary>
     /// Defines a queue configuration.

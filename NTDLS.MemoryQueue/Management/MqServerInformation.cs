@@ -1,11 +1,11 @@
 ﻿using NTDLS.MemoryQueue.Server;
 
-namespace NTDLS.MemoryQueue
+namespace NTDLS.MemoryQueue.Management
 {
     /// <summary>
     /// Queue client configuration parameters.
     /// </summary>
-    public class MqReadonlyServerConfiguration
+    public class MqServerInformation
     {
         /// <summary>
         /// When true, query replies are queued in a thread pool. Otherwise, queries block other activities.

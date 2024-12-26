@@ -1,4 +1,4 @@
-﻿namespace NTDLS.MemoryQueue
+﻿namespace NTDLS.MemoryQueue.Management
 {
     /// <summary>
     /// Contains information about queue subscribers.

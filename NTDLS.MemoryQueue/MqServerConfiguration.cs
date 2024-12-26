@@ -1,4 +1,5 @@
-﻿using NTDLS.MemoryQueue.Server;
+﻿using NTDLS.MemoryQueue.Management;
+using NTDLS.MemoryQueue.Server;
 
 namespace NTDLS.MemoryQueue
 {
@@ -36,9 +37,9 @@ namespace NTDLS.MemoryQueue
         /// <summary>
         /// Returns a read-only copy of the running configuration.
         /// </summary>
-        public MqReadonlyServerConfiguration ReadonlyClone()
+        public MqServerInformation ReadonlyClone()
         {
-            return new MqReadonlyServerConfiguration
+            return new MqServerInformation
             {
                 AsynchronousQueryWaiting = AsynchronousQueryWaiting,
                 QueryTimeout = QueryTimeout,
