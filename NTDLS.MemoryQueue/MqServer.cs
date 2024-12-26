@@ -211,6 +211,57 @@ namespace NTDLS.MemoryQueue
             }
         }
 
+        /// <summary>
+        /// Returns a read-only copy messages in the queue.
+        /// </summary>
+        /// <returns></returns>
+        public ReadOnlyCollection<MqEnqueuedMessageInformation> GetQueueMessage(string queueName, Guid messageId)
+        {
+            while (true)
+            {
+                bool success = false;
+                var result = new List<MqEnqueuedMessageInformation>();
+
+                success = _messageQueues.TryUse(mq =>
+                {
+                    var filteredQueues = mq.Where(o => o.Value.QueueConfiguration.QueueName.Equals(queueName, StringComparison.OrdinalIgnoreCase));
+
+                    foreach (var q in mq)
+                    {
+                        success = q.Value.EnqueuedMessages.TryUse(m =>
+                        {
+                            var message = m.Where(o => o.MessageId == messageId).FirstOrDefault();
+                            if (message != null)
+                            {
+                                result.Add(new MqEnqueuedMessageInformation
+                                {
+                                    Timestamp = message.Timestamp,
+                                    SubscriberMessageDeliveries = message.SubscriberMessageDeliveries.Keys.ToHashSet(),
+                                    SatisfiedSubscribersConnectionIDs = message.SatisfiedSubscribersConnectionIDs,
+                                    ObjectType = message.ObjectType,
+                                    MessageJson = message.MessageJson,
+                                    MessageId = message.MessageId
+                                });
+                            }
+                        });
+
+                        if (!success)
+                        {
+                            //Failed to lock, break the inner loop and try again.
+                            break;
+                        }
+                    }
+                });
+
+                if (success)
+                {
+                    return new ReadOnlyCollection<MqEnqueuedMessageInformation>(result);
+                }
+
+                Thread.Sleep(1); //Failed to lock, sleep then try again.
+            }
+        }
+
         internal void InvokeOnException(MqServer server, MqQueueConfiguration? queue, Exception ex)
             => OnException?.Invoke(server, queue, ex);
 
