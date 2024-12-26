@@ -1,5 +1,6 @@
 ﻿using NTDLS.MemoryQueue.Payloads.Queries.ClientToServer;
 using NTDLS.ReliableMessaging;
+using System.Net;
 
 namespace NTDLS.MemoryQueue.Server.QueryHandlers
 {
@@ -38,7 +39,11 @@ namespace NTDLS.MemoryQueue.Server.QueryHandlers
         {
             try
             {
-                _mqServer.SubscribeToQueue(context.ConnectionId, param.QueueName);
+                _mqServer.SubscribeToQueue(context.ConnectionId,
+                    context.TcpClient.Client.LocalEndPoint as IPEndPoint,
+                    context.TcpClient.Client.RemoteEndPoint as IPEndPoint,
+                    param.QueueName);
+
                 return new SubscribeToQueueQueryReply(true);
             }
             catch (Exception ex)

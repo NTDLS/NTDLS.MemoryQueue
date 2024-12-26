@@ -32,5 +32,20 @@ namespace NTDLS.MemoryQueue
         ///The growth rate of the auto-resizing for the receive buffer.
         /// </summary>
         public double ReceiveBufferGrowthRate { get; set; } = ServerDefaults.BUFFER_GROWTH_RATE;
+
+        /// <summary>
+        /// Returns a read-only copy of the running configuration.
+        /// </summary>
+        public MqReadonlyServerConfiguration ReadonlyClone()
+        {
+            return new MqReadonlyServerConfiguration
+            {
+                AsynchronousQueryWaiting = AsynchronousQueryWaiting,
+                QueryTimeout = QueryTimeout,
+                InitialReceiveBufferSize = InitialReceiveBufferSize,
+                MaxReceiveBufferSize = MaxReceiveBufferSize,
+                ReceiveBufferGrowthRate = ReceiveBufferGrowthRate
+            };
+        }
     }
 }

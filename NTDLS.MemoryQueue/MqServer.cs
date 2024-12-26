@@ -3,6 +3,8 @@ using NTDLS.MemoryQueue.Server;
 using NTDLS.MemoryQueue.Server.QueryHandlers;
 using NTDLS.ReliableMessaging;
 using NTDLS.Semaphore;
+using System.Collections.ObjectModel;
+using System.Net;
 
 namespace NTDLS.MemoryQueue
 {
@@ -13,7 +15,7 @@ namespace NTDLS.MemoryQueue
     {
         private readonly RmServer _rmServer;
         private readonly PessimisticCriticalResource<Dictionary<string, MessageQueue>> _messageQueues = new();
-        private MqServerConfiguration _configuration;
+        private readonly MqServerConfiguration _configuration;
 
         /// <summary>
         /// Delegate used to notify of queue server exceptions.
@@ -55,6 +57,76 @@ namespace NTDLS.MemoryQueue
             _rmServer = new RmServer(rmConfiguration);
             _rmServer.AddHandler(new InternalServerQueryHandlers(this));
             _rmServer.OnDisconnected += RmServer_OnDisconnected;
+        }
+
+        /// <summary>
+        /// Returns a read-only copy of the running configuration.
+        /// </summary>
+        /// <returns></returns>
+        public MqReadonlyServerConfiguration GetConfiguration()
+        {
+            return _configuration.ReadonlyClone();
+        }
+
+        /// <summary>
+        /// Returns a read-only copy of the queues.
+        /// </summary>
+        /// <returns></returns>
+        public ReadOnlyCollection<MqReadonlyQueueConfiguration> GetQueues()
+        {
+            var result = new List<MqReadonlyQueueConfiguration>();
+
+            _messageQueues.Use(mq =>
+            {
+                foreach (var q in mq)
+                {
+                    result.Add(q.Value.QueueConfiguration.ReadonlyClone());
+                }
+            });
+
+            return new ReadOnlyCollection<MqReadonlyQueueConfiguration>(result);
+        }
+
+        /// <summary>
+        /// Returns a read-only copy of the queue subscribers.
+        /// </summary>
+        /// <returns></returns>
+        public ReadOnlyCollection<MqSubscriber> GetSubscribers(string queueName)
+        {
+            while (true)
+            {
+                bool success = false;
+                var result = new List<MqSubscriber>();
+
+                success = _messageQueues.TryUse(mq =>
+                {
+                    var filteredQueues = mq.Where(o => o.Value.QueueConfiguration.QueueName.Equals(queueName, StringComparison.OrdinalIgnoreCase));
+
+                    foreach (var q in filteredQueues)
+                    {
+                        success = q.Value.Subscribers.TryUse(s =>
+                        {
+                            foreach (var subscriber in s)
+                            {
+                                result.Add(subscriber.Value);
+                            }
+                        });
+
+                        if (!success)
+                        {
+                            //Failed to lock, break the inner loop and try again.
+                            break;
+                        }
+                    }
+                });
+
+                if (success)
+                {
+                    return new ReadOnlyCollection<MqSubscriber>(result);
+                }
+
+                Thread.Sleep(1); //Failed to lock, sleep then try again.
+            }
         }
 
         internal void InvokeOnException(MqServer server, MqQueueConfiguration? queue, Exception ex)
@@ -140,14 +212,20 @@ namespace NTDLS.MemoryQueue
         /// <summary>
         /// Creates a subscription to a queue for a given connection id.
         /// </summary>
-        internal void SubscribeToQueue(Guid connectionId, string queueName)
+        internal void SubscribeToQueue(Guid connectionId, IPEndPoint? localEndpoint, IPEndPoint? remoteEndpoint, string queueName)
         {
             _messageQueues.Use(o =>
             {
                 string queueKey = queueName.ToLowerInvariant();
                 if (o.TryGetValue(queueKey, out var messageQueue))
                 {
-                    messageQueue.Subscribers.Use(s => s.Add(connectionId));
+                    messageQueue.Subscribers.Use(s => s.Add(connectionId, new MqSubscriber(connectionId)
+                    {
+                        LocalAddress = localEndpoint?.Address?.ToString(),
+                        RemoteAddress = remoteEndpoint?.Address?.ToString(),
+                        LocalPort = localEndpoint?.Port,
+                        RemotePort = remoteEndpoint?.Port
+                    }));
                 }
             });
         }

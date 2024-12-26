@@ -17,7 +17,7 @@ namespace NTDLS.MemoryQueue.Server
         /// <summary>
         /// List of subscriber connection IDs.
         /// </summary>
-        public PessimisticCriticalResource<HashSet<Guid>> Subscribers { get; set; } = new();
+        public PessimisticCriticalResource<Dictionary<Guid, MqSubscriber>> Subscribers { get; set; } = new();
 
         /// <summary>
         /// Messages that are enqueued in this list.
@@ -51,7 +51,7 @@ namespace NTDLS.MemoryQueue.Server
                     lastBatchDelivery = DateTime.UtcNow;
 
                     EnqueuedMessage? topMessage = null;
-                    List<Guid>? yetToBeDeliveredSubscribers = null;
+                    List<MqSubscriber>? yetToBeDeliveredSubscribers = null;
 
                     #region Get message and its subscribers.
 
@@ -79,7 +79,10 @@ namespace NTDLS.MemoryQueue.Server
                                 if (topMessage != null)
                                 {
                                     //Get list of subscribers that have yet to get a copy of the message.
-                                    yetToBeDeliveredSubscribers = s.Except(topMessage.SatisfiedSubscribersConnectionIDs).ToList();
+
+                                    var yetToBeDeliveredSubscriberIds = s.Keys.Except(topMessage.SatisfiedSubscribersConnectionIDs).ToList();
+
+                                    yetToBeDeliveredSubscribers = s.Where(o => yetToBeDeliveredSubscriberIds.Contains(o.Key)).Select(o => o.Value).ToList();
 
                                     if (messageQueue.QueueConfiguration.DeliveryScheme == DeliveryScheme.Random)
                                     {
@@ -99,7 +102,7 @@ namespace NTDLS.MemoryQueue.Server
 
                         #region Deliver message to subscibers.
 
-                        foreach (var subscriberId in yetToBeDeliveredSubscribers)
+                        foreach (var subscriber in yetToBeDeliveredSubscribers)
                         {
                             if (messageQueue.KeepRunning == false)
                             {
@@ -108,10 +111,15 @@ namespace NTDLS.MemoryQueue.Server
 
                             try
                             {
-                                if (messageQueue.QueueServer.DeliverMessage(subscriberId, messageQueue.QueueConfiguration.QueueName, topMessage))
+                                subscriber.DeliveryAttempts++;
+
+                                if (messageQueue.QueueServer.DeliverMessage(subscriber.ConnectionId, messageQueue.QueueConfiguration.QueueName, topMessage))
                                 {
+                                    subscriber.ConsumedMessages++;
                                     successfulDeliveryAndConsume = true;
                                 }
+
+                                subscriber.SuccessfulMessagesDeliveries++;
 
                                 if (messageQueue.QueueConfiguration.DeliveryThrottle > TimeSpan.Zero)
                                 {
@@ -135,7 +143,7 @@ namespace NTDLS.MemoryQueue.Server
                                 }
 
                                 //This thread is the only place we manage [SatisfiedSubscribersConnectionIDs], so we can use it without additional locking.
-                                topMessage.SatisfiedSubscribersConnectionIDs.Add(subscriberId);
+                                topMessage.SatisfiedSubscribersConnectionIDs.Add(subscriber.ConnectionId);
                                 successfulDeliveries++;
 
                                 if (successfulDeliveryAndConsume
@@ -147,25 +155,26 @@ namespace NTDLS.MemoryQueue.Server
                             }
                             catch (Exception ex) //Delivery failure.
                             {
+                                subscriber.FailedMessagesDeliveries++;
                                 messageQueue.QueueServer.InvokeOnException(messageQueue.QueueServer, messageQueue.QueueConfiguration, ex.GetBaseException());
                             }
 
                             //Keep track of per-message-subscriber delivery metrics.
-                            if (topMessage.SubscriberMessageDeliveries.TryGetValue(subscriberId, out var subscriberMessageDelivery))
+                            if (topMessage.SubscriberMessageDeliveries.TryGetValue(subscriber.ConnectionId, out var subscriberMessageDelivery))
                             {
                                 subscriberMessageDelivery.DeliveryAttempts++;
                             }
                             else
                             {
                                 subscriberMessageDelivery = new SubscriberMessageDelivery() { DeliveryAttempts = 1 };
-                                topMessage.SubscriberMessageDeliveries.Add(subscriberId, subscriberMessageDelivery);
+                                topMessage.SubscriberMessageDeliveries.Add(subscriber.ConnectionId, subscriberMessageDelivery);
                             }
 
                             //If we have tried to deliver this message to this subscriber too many times, then mark this subscriber-message as satisfied.
                             if (messageQueue.QueueConfiguration.MaxDeliveryAttempts > 0
                                 && subscriberMessageDelivery.DeliveryAttempts >= messageQueue.QueueConfiguration.MaxDeliveryAttempts)
                             {
-                                topMessage.SatisfiedSubscribersConnectionIDs.Add(subscriberId);
+                                topMessage.SatisfiedSubscribersConnectionIDs.Add(subscriber.ConnectionId);
                             }
                         }
 
@@ -187,7 +196,7 @@ namespace NTDLS.MemoryQueue.Server
                                     //The message was consumed by a subscriber, remove it from the message list.
                                     m.Remove(topMessage);
                                 }
-                                else if (s.Except(topMessage.SatisfiedSubscribersConnectionIDs).Any() == false)
+                                else if (s.Keys.Except(topMessage.SatisfiedSubscribersConnectionIDs).Any() == false)
                                 {
                                     //If all subscribers are satisfied (delivered or max attempts reached), then remove the message.
                                     m.Remove(topMessage);
