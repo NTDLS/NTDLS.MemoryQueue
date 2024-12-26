@@ -5,7 +5,6 @@ using NTDLS.MemoryQueue.Server.QueryHandlers;
 using NTDLS.ReliableMessaging;
 using NTDLS.Semaphore;
 using System.Collections.ObjectModel;
-using System.Diagnostics;
 using System.Net;
 
 namespace NTDLS.MemoryQueue
@@ -67,7 +66,15 @@ namespace NTDLS.MemoryQueue
         /// <returns></returns>
         public MqServerInformation GetConfiguration()
         {
-            return _configuration.ReadonlyClone();
+            return new MqServerInformation
+            {
+                AsynchronousQueryWaiting = _configuration.AsynchronousQueryWaiting,
+                QueryTimeout = _configuration.QueryTimeout,
+                InitialReceiveBufferSize = _configuration.InitialReceiveBufferSize,
+                MaxReceiveBufferSize = _configuration.MaxReceiveBufferSize,
+                ReceiveBufferGrowthRate = _configuration.ReceiveBufferGrowthRate,
+                ListenPort = _rmServer.ListenPort
+            };
         }
 
         /// <summary>

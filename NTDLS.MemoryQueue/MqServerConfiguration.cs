@@ -1,5 +1,4 @@
-﻿using NTDLS.MemoryQueue.Management;
-using NTDLS.MemoryQueue.Server;
+﻿using NTDLS.MemoryQueue.Server;
 
 namespace NTDLS.MemoryQueue
 {
@@ -33,20 +32,5 @@ namespace NTDLS.MemoryQueue
         ///The growth rate of the auto-resizing for the receive buffer.
         /// </summary>
         public double ReceiveBufferGrowthRate { get; set; } = ServerDefaults.BUFFER_GROWTH_RATE;
-
-        /// <summary>
-        /// Returns a read-only copy of the running configuration.
-        /// </summary>
-        public MqServerInformation ReadonlyClone()
-        {
-            return new MqServerInformation
-            {
-                AsynchronousQueryWaiting = AsynchronousQueryWaiting,
-                QueryTimeout = QueryTimeout,
-                InitialReceiveBufferSize = InitialReceiveBufferSize,
-                MaxReceiveBufferSize = MaxReceiveBufferSize,
-                ReceiveBufferGrowthRate = ReceiveBufferGrowthRate
-            };
-        }
     }
 }

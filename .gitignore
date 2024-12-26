@@ -32,3 +32,9 @@ QueueClient/obj/
 QueueServer/obj/
 
 QueueServer/bin/
+
+NTDLS.MemoryQueueServer/bin/
+
+NTDLS.MemoryQueueServer/obj/
+
+*.user

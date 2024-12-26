@@ -3,7 +3,7 @@
     internal class CaseInsensitiveMessageQueueDictionary : Dictionary<string, MessageQueue>
     {
         public CaseInsensitiveMessageQueueDictionary()
-            : base (StringComparer.OrdinalIgnoreCase)
+            : base(StringComparer.OrdinalIgnoreCase)
         {
         }
     }

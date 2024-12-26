@@ -32,5 +32,10 @@ namespace NTDLS.MemoryQueue.Management
         ///The growth rate of the auto-resizing for the receive buffer.
         /// </summary>
         public double ReceiveBufferGrowthRate { get; internal set; } = ServerDefaults.BUFFER_GROWTH_RATE;
+
+        /// <summary>
+        /// The TCP/IP port that the message queue server is listening on.
+        /// </summary>
+        public int ListenPort { get; internal set; }
     }
 }
