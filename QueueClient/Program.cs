@@ -27,6 +27,8 @@ namespace QueueClient
 
             var myQueueNames = new HashSet<string>();
 
+            var alreadySubscribedQueueNames = new HashSet<string>();
+
             int numberOfQueuesToCreate = random.Next(3, 10); //May create less depending on whether we push duplicates to the HashSet.
             for (int i = 0; i < numberOfQueuesToCreate; i++)
             {
@@ -38,8 +40,12 @@ namespace QueueClient
 
                 if (random.Next(1, 100) > 50) //We don't always subscribe to our own queue.
                 {
-                    Console.WriteLine($"Subscribing to queue: '{queueName}'.");
-                    client.Subscribe(queueName);
+                    if (alreadySubscribedQueueNames.Contains(queueName) == false)
+                    {
+                        Console.WriteLine($"Subscribing to queue: '{queueName}'.");
+                        client.Subscribe(queueName);
+                        alreadySubscribedQueueNames.Add(queueName);
+                    }
                 }
             }
 
@@ -48,7 +54,7 @@ namespace QueueClient
             int clientId = Math.Abs(Guid.NewGuid().GetHashCode());
 
             int messageNumber = 0;
-            while (messageNumber < 5000) //Send test messages as objects that inherit from IMqMessage
+            while (messageNumber < 100000) //Send test messages as objects that inherit from IMqMessage
             {
                 foreach (var queueName in myQueueNames)
                 {
