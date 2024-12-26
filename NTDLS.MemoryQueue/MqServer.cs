@@ -86,19 +86,19 @@ namespace NTDLS.MemoryQueue
             while (true)
             {
                 bool success = false;
-                var result = new List<MqQueueInformation>();
+                List<MqQueueInformation>? result = new();
 
                 success = _messageQueues.TryUse(mq =>
                 {
                     foreach (var q in mq)
                     {
-                        success = q.Value.EnqueuedMessages.TryUse(m =>
+                        var enqueuedMessagesSuccess = q.Value.EnqueuedMessages.TryUse(m =>
                         {
                             result.Add(new MqQueueInformation
                             {
                                 BatchDeliveryInterval = q.Value.QueueConfiguration.BatchDeliveryInterval,
                                 ConsumptionScheme = q.Value.QueueConfiguration.ConsumptionScheme,
-                                CurrentEnqueuedMessageCount = m.Count,
+                                //CurrentEnqueuedMessageCount = m.Count,
                                 DeliveryScheme = q.Value.QueueConfiguration.DeliveryScheme,
                                 DeliveryThrottle = q.Value.QueueConfiguration.DeliveryThrottle,
                                 MaxDeliveryAttempts = q.Value.QueueConfiguration.MaxDeliveryAttempts,
@@ -110,15 +110,16 @@ namespace NTDLS.MemoryQueue
                             });
                         });
 
-                        if (!success)
+                        if (!enqueuedMessagesSuccess)
                         {
                             //Failed to lock, break the inner loop and try again.
+                            result = null;
                             break;
                         }
                     }
                 });
 
-                if (success)
+                if (success && result != null)
                 {
                     return new ReadOnlyCollection<MqQueueInformation>(result);
                 }
@@ -174,14 +175,14 @@ namespace NTDLS.MemoryQueue
             while (true)
             {
                 bool success = false;
-                var result = new List<MqEnqueuedMessageInformation>();
+                List<MqEnqueuedMessageInformation>? result = new();
 
                 success = _messageQueues.TryUse(mq =>
                 {
                     var filteredQueues = mq.Where(o => o.Value.QueueConfiguration.QueueName.Equals(queueName, StringComparison.OrdinalIgnoreCase));
                     foreach (var q in filteredQueues)
                     {
-                        success = q.Value.EnqueuedMessages.TryUse(m =>
+                        var enqueuedMessagesSuccess = q.Value.EnqueuedMessages.TryUse(m =>
                         {
                             foreach (var message in m.Skip(offset).Take(take))
                             {
@@ -197,15 +198,16 @@ namespace NTDLS.MemoryQueue
                             }
                         });
 
-                        if (!success)
+                        if (!enqueuedMessagesSuccess)
                         {
                             //Failed to lock, break the inner loop and try again.
+                            result = null;
                             break;
                         }
                     }
                 });
 
-                if (success)
+                if (success && result != null)
                 {
                     return new ReadOnlyCollection<MqEnqueuedMessageInformation>(result);
                 }
