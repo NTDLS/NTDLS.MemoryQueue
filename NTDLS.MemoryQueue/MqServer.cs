@@ -211,7 +211,7 @@ namespace NTDLS.MemoryQueue
         /// Returns a read-only copy messages in the queue.
         /// </summary>
         /// <returns></returns>
-        public MqEnqueuedMessageInformation? GetQueueMessage(string queueName, Guid messageId)
+        public MqEnqueuedMessageInformation GetQueueMessage(string queueName, Guid messageId)
         {
             while (true)
             {
