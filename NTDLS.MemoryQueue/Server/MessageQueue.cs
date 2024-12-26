@@ -31,6 +31,7 @@ namespace NTDLS.MemoryQueue.Server
             var messageQueue = pMessageQueue.EnsureNotNull<MessageQueue>();
 
             var lastStaleMessageScan = DateTime.UtcNow;
+            var lastBatchDelivery = DateTime.UtcNow;
 
             while (messageQueue.KeepRunning)
             {
@@ -38,6 +39,17 @@ namespace NTDLS.MemoryQueue.Server
 
                 try
                 {
+                    if (messageQueue.QueueConfiguration.BatchDeliveryInterval > TimeSpan.Zero)
+                    {
+                        if (DateTime.UtcNow - lastBatchDelivery < messageQueue.QueueConfiguration.BatchDeliveryInterval)
+                        {
+                            Thread.Sleep(1);
+                            continue;
+                        }
+                    }
+
+                    lastBatchDelivery = DateTime.UtcNow;
+
                     EnqueuedMessage? topMessage = null;
                     List<Guid>? yetToBeDeliveredSubscribers = null;
 
@@ -89,11 +101,37 @@ namespace NTDLS.MemoryQueue.Server
 
                         foreach (var subscriberId in yetToBeDeliveredSubscribers)
                         {
+                            if (messageQueue.KeepRunning == false)
+                            {
+                                break;
+                            }
+
                             try
                             {
                                 if (messageQueue.QueueServer.DeliverMessage(subscriberId, messageQueue.QueueConfiguration.QueueName, topMessage))
                                 {
                                     successfulDeliveryAndConsume = true;
+                                }
+
+                                if (messageQueue.QueueConfiguration.DeliveryThrottle > TimeSpan.Zero)
+                                {
+                                    if (messageQueue.QueueConfiguration.DeliveryThrottle.TotalSeconds >= 1)
+                                    {
+                                        double sleepSeconds = messageQueue.QueueConfiguration.DeliveryThrottle.TotalSeconds;
+                                        for (int sleep = 0; sleep < sleepSeconds && messageQueue.KeepRunning; sleep++)
+                                        {
+                                            Thread.Sleep(1000);
+                                        }
+                                    }
+                                    else
+                                    {
+                                        Thread.Sleep((int)messageQueue.QueueConfiguration.DeliveryThrottle.TotalMilliseconds);
+                                    }
+                                }
+
+                                if (messageQueue.KeepRunning == false)
+                                {
+                                    break;
                                 }
 
                                 //This thread is the only place we manage [SatisfiedSubscribersConnectionIDs], so we can use it without additional locking.
@@ -133,6 +171,11 @@ namespace NTDLS.MemoryQueue.Server
 
                         #endregion
 
+                        if (messageQueue.KeepRunning == false)
+                        {
+                            break;
+                        }
+
                         #region Remove message from queue.
 
                         messageQueue.EnqueuedMessages.UseAll([messageQueue.Subscribers], m =>
@@ -153,6 +196,11 @@ namespace NTDLS.MemoryQueue.Server
                         });
 
                         #endregion
+
+                        if (messageQueue.KeepRunning == false)
+                        {
+                            break;
+                        }
                     }
                 }
                 catch (Exception ex)
