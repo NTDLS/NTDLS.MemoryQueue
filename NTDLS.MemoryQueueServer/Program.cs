@@ -1,4 +1,4 @@
-using Serilog;
+﻿using Serilog;
 using Topshelf;
 
 namespace NTDLS.MemoryQueueServer
@@ -30,8 +30,8 @@ namespace NTDLS.MemoryQueueServer
                 x.RunAsLocalSystem();
 
                 x.SetDescription("VPS message queuing service.");
-                x.SetDisplayName("NTDLS.MemoryQueueServer");
-                x.SetServiceName("NTDLS.MemoryQueueServer");
+                x.SetDisplayName("VPS.MessageQueue");
+                x.SetServiceName("VPS.MessageQueue");
             });
         }
     }

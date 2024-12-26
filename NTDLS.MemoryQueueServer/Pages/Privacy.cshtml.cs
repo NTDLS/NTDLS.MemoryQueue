@@ -2,7 +2,7 @@
 
 namespace NTDLS.MemoryQueueServer.Pages
 {
-    public class PrivacyModel : PageModel
+    internal class PrivacyModel : PageModel
     {
         private readonly ILogger<PrivacyModel> _logger;
 

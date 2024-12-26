@@ -4,7 +4,7 @@ using Topshelf.ServiceConfigurators;
 
 namespace NTDLS.MemoryQueueServer
 {
-    internal class QueuingService
+    public class QueuingService
     {
         private readonly MqServer _mqServer = new();
 
@@ -21,9 +21,10 @@ namespace NTDLS.MemoryQueueServer
 
             int portNumber = configuration.GetValue<int>("MqServer:Port");
 
-            Log.Verbose("Starting message queue service on port: {portNumber}.");
+            Log.Verbose("Starting message queue service.");
             _mqServer.Start(portNumber);
             Log.Verbose("Message queue service started.");
+
 
             builder.Services.AddSingleton<MqServer>(_mqServer);
 

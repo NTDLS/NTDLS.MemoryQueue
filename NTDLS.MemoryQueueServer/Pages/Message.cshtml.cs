@@ -5,7 +5,7 @@ using NTDLS.MemoryQueue.Management;
 
 namespace NTDLS.MemoryQueueServer.Pages
 {
-    public class MessageModel(ILogger<IndexModel> logger, MqServer mqServer) : PageModel
+    internal class MessageModel(ILogger<IndexModel> logger, MqServer mqServer) : PageModel
     {
         [BindProperty(SupportsGet = true)]
         public string QueueName { get; set; } = string.Empty;

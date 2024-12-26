@@ -5,7 +5,7 @@ using NTDLS.MemoryQueue.Management;
 
 namespace NTDLS.MemoryQueueServer.Pages
 {
-    public class MessagesModel(ILogger<IndexModel> logger, MqServer mqServer) : PageModel
+    internal class MessagesModel(ILogger<IndexModel> logger, MqServer mqServer) : PageModel
     {
         const int PageSize = 20;
 
