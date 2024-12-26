@@ -4,7 +4,7 @@ using NTDLS.MemoryQueue.Management;
 
 namespace NTDLS.MemoryQueueServer.Pages
 {
-    internal class IndexModel(ILogger<IndexModel> logger, MqServer mqServer) : PageModel
+    public class IndexModel(ILogger<IndexModel> logger, MqServer mqServer) : PageModel
     {
         private readonly ILogger<IndexModel> _logger = logger;
         public List<MqQueueInformation> Queues { get; private set; } = new();
