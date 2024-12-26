@@ -41,23 +41,5 @@ namespace NTDLS.MemoryQueue
         /// Determines how messages are distributed to subscribers.
         /// </summary>
         public DeliveryScheme DeliveryScheme { get; set; } = DeliveryScheme.Random;
-
-        /// <summary>
-        /// Returns a read-only clone of the queue configuration.
-        /// </summary>
-        /// <returns></returns>
-        public MqReadonlyQueueConfiguration ReadonlyClone()
-        {
-            return new MqReadonlyQueueConfiguration
-            {
-                BatchDeliveryInterval = BatchDeliveryInterval,
-                ConsumptionScheme = ConsumptionScheme,
-                DeliveryScheme = DeliveryScheme,
-                DeliveryThrottle = DeliveryThrottle,
-                MaxDeliveryAttempts = MaxDeliveryAttempts,
-                MaxMessageAge = MaxMessageAge,
-                QueueName = QueueName
-            };
-        }
     }
 }

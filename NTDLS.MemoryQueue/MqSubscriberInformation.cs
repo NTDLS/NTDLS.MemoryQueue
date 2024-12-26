@@ -3,9 +3,9 @@
     /// <summary>
     /// Contains information about queue subscribers.
     /// </summary>
-    public class MqSubscriber
+    public class MqSubscriberInformation
     {
-        internal MqSubscriber(Guid connectionId)
+        internal MqSubscriberInformation(Guid connectionId)
         {
             ConnectionId = connectionId;
         }

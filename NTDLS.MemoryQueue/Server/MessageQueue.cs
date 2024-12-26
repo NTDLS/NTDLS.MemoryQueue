@@ -17,7 +17,7 @@ namespace NTDLS.MemoryQueue.Server
         /// <summary>
         /// List of subscriber connection IDs.
         /// </summary>
-        public PessimisticCriticalResource<Dictionary<Guid, MqSubscriber>> Subscribers { get; set; } = new();
+        public PessimisticCriticalResource<Dictionary<Guid, MqSubscriberInformation>> Subscribers { get; set; } = new();
 
         /// <summary>
         /// Messages that are enqueued in this list.
@@ -25,6 +25,11 @@ namespace NTDLS.MemoryQueue.Server
         public PessimisticCriticalResource<List<EnqueuedMessage>> EnqueuedMessages { get; set; } = new();
         public MqQueueConfiguration QueueConfiguration { get; private set; } = queueConfiguration;
         public Thread DeliveryThread = new(DeliveryThreadProc);
+
+        public ulong TotalEnqueuedMessages { get; set; }
+        public ulong TotalExpiredMessages { get; set; }
+        public ulong TotalDeliveredMessages { get; set; }
+        public ulong TotalDeliveryFailures { get; set; }
 
         private static void DeliveryThreadProc(object? pMessageQueue)
         {
@@ -51,7 +56,7 @@ namespace NTDLS.MemoryQueue.Server
                     lastBatchDelivery = DateTime.UtcNow;
 
                     EnqueuedMessage? topMessage = null;
-                    List<MqSubscriber>? yetToBeDeliveredSubscribers = null;
+                    List<MqSubscriberInformation>? yetToBeDeliveredSubscribers = null;
 
                     #region Get message and its subscribers.
 
@@ -63,7 +68,8 @@ namespace NTDLS.MemoryQueue.Server
                             && (DateTime.UtcNow - lastStaleMessageScan).TotalSeconds >= 10)
                             {
                                 //If MaxMessageAge is defined, then remove stale messages.
-                                m.RemoveAll(o => (DateTime.UtcNow - o.Timestamp) > messageQueue.QueueConfiguration.MaxMessageAge);
+                                messageQueue.TotalExpiredMessages
+                                    += (ulong)m.RemoveAll(o => (DateTime.UtcNow - o.Timestamp) > messageQueue.QueueConfiguration.MaxMessageAge);
 
                                 //There could be a lot of messages in the queue, so lets use lastStaleMessageScan
                                 //  to not needlessly compare the timestamps each-and-every loop.
@@ -119,6 +125,7 @@ namespace NTDLS.MemoryQueue.Server
                                     successfulDeliveryAndConsume = true;
                                 }
 
+                                messageQueue.TotalDeliveredMessages++;
                                 subscriber.SuccessfulMessagesDeliveries++;
 
                                 if (messageQueue.QueueConfiguration.DeliveryThrottle > TimeSpan.Zero)
@@ -155,6 +162,7 @@ namespace NTDLS.MemoryQueue.Server
                             }
                             catch (Exception ex) //Delivery failure.
                             {
+                                messageQueue.TotalDeliveryFailures++;
                                 subscriber.FailedMessagesDeliveries++;
                                 messageQueue.QueueServer.InvokeOnException(messageQueue.QueueServer, messageQueue.QueueConfiguration, ex.GetBaseException());
                             }

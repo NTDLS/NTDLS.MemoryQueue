@@ -72,31 +72,63 @@ namespace NTDLS.MemoryQueue
         /// Returns a read-only copy of the queues.
         /// </summary>
         /// <returns></returns>
-        public ReadOnlyCollection<MqReadonlyQueueConfiguration> GetQueues()
+        public ReadOnlyCollection<MqQueueInformation> GetQueues()
         {
-            var result = new List<MqReadonlyQueueConfiguration>();
 
-            _messageQueues.Use(mq =>
+            while (true)
             {
-                foreach (var q in mq)
-                {
-                    result.Add(q.Value.QueueConfiguration.ReadonlyClone());
-                }
-            });
+                bool success = false;
+                var result = new List<MqQueueInformation>();
 
-            return new ReadOnlyCollection<MqReadonlyQueueConfiguration>(result);
+                success = _messageQueues.TryUse(mq =>
+                {
+                    foreach (var q in mq)
+                    {
+                        success = q.Value.EnqueuedMessages.TryUse(m =>
+                        {
+                            result.Add(new MqQueueInformation
+                            {
+                                BatchDeliveryInterval = q.Value.QueueConfiguration.BatchDeliveryInterval,
+                                ConsumptionScheme = q.Value.QueueConfiguration.ConsumptionScheme,
+                                DeliveryScheme = q.Value.QueueConfiguration.DeliveryScheme,
+                                DeliveryThrottle = q.Value.QueueConfiguration.DeliveryThrottle,
+                                MaxDeliveryAttempts = q.Value.QueueConfiguration.MaxDeliveryAttempts,
+                                MaxMessageAge = q.Value.QueueConfiguration.MaxMessageAge,
+                                QueueName = q.Value.QueueConfiguration.QueueName,
+                                CurrentEnqueuedMessageCount = m.Count,
+                                TotalDeliveredMessages = q.Value.TotalDeliveredMessages,
+                                TotalEnqueuedMessages = q.Value.TotalEnqueuedMessages,
+                                TotalExpiredMessages = q.Value.TotalExpiredMessages
+                            });
+                        });
+
+                        if (!success)
+                        {
+                            //Failed to lock, break the inner loop and try again.
+                            break;
+                        }
+                    }
+                });
+
+                if (success)
+                {
+                    return new ReadOnlyCollection<MqQueueInformation>(result);
+                }
+
+                Thread.Sleep(1); //Failed to lock, sleep then try again.
+            }
         }
 
         /// <summary>
         /// Returns a read-only copy of the queue subscribers.
         /// </summary>
         /// <returns></returns>
-        public ReadOnlyCollection<MqSubscriber> GetSubscribers(string queueName)
+        public ReadOnlyCollection<MqSubscriberInformation> GetSubscribers(string queueName)
         {
             while (true)
             {
                 bool success = false;
-                var result = new List<MqSubscriber>();
+                var result = new List<MqSubscriberInformation>();
 
                 success = _messageQueues.TryUse(mq =>
                 {
@@ -122,7 +154,7 @@ namespace NTDLS.MemoryQueue
 
                 if (success)
                 {
-                    return new ReadOnlyCollection<MqSubscriber>(result);
+                    return new ReadOnlyCollection<MqSubscriberInformation>(result);
                 }
 
                 Thread.Sleep(1); //Failed to lock, sleep then try again.
@@ -219,7 +251,7 @@ namespace NTDLS.MemoryQueue
                 string queueKey = queueName.ToLowerInvariant();
                 if (o.TryGetValue(queueKey, out var messageQueue))
                 {
-                    messageQueue.Subscribers.Use(s => s.Add(connectionId, new MqSubscriber(connectionId)
+                    messageQueue.Subscribers.Use(s => s.Add(connectionId, new MqSubscriberInformation(connectionId)
                     {
                         LocalAddress = localEndpoint?.Address?.ToString(),
                         RemoteAddress = remoteEndpoint?.Address?.ToString(),
@@ -255,6 +287,7 @@ namespace NTDLS.MemoryQueue
                 string queueKey = queueName.ToLowerInvariant();
                 if (o.TryGetValue(queueKey, out var messageQueue))
                 {
+                    messageQueue.TotalEnqueuedMessages++;
                     messageQueue.EnqueuedMessages.Use(s => s.Add(new EnqueuedMessage(objectType, messageJson)));
                     messageQueue.DeliveryThreadWaitEvent.Set();
                 }
