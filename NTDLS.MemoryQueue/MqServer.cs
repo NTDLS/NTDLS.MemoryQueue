@@ -175,8 +175,7 @@ namespace NTDLS.MemoryQueue
                 success = _messageQueues.TryUse(mq =>
                 {
                     var filteredQueues = mq.Where(o => o.Value.QueueConfiguration.QueueName.Equals(queueName, StringComparison.OrdinalIgnoreCase));
-
-                    foreach (var q in mq)
+                    foreach (var q in filteredQueues)
                     {
                         success = q.Value.EnqueuedMessages.TryUse(m =>
                         {
@@ -225,8 +224,7 @@ namespace NTDLS.MemoryQueue
                 success = _messageQueues.TryUse(mq =>
                 {
                     var filteredQueues = mq.Where(o => o.Value.QueueConfiguration.QueueName.Equals(queueName, StringComparison.OrdinalIgnoreCase));
-
-                    foreach (var q in mq)
+                    foreach (var q in filteredQueues)
                     {
                         success = q.Value.EnqueuedMessages.TryUse(m =>
                         {
