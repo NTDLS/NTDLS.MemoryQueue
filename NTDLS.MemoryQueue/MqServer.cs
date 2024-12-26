@@ -5,6 +5,7 @@ using NTDLS.MemoryQueue.Server.QueryHandlers;
 using NTDLS.ReliableMessaging;
 using NTDLS.Semaphore;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Net;
 
 namespace NTDLS.MemoryQueue
@@ -15,7 +16,7 @@ namespace NTDLS.MemoryQueue
     public class MqServer
     {
         private readonly RmServer _rmServer;
-        private readonly PessimisticCriticalResource<Dictionary<string, MessageQueue>> _messageQueues = new();
+        private readonly PessimisticCriticalResource<CaseInsensitiveMessageQueueDictionary> _messageQueues = new();
         private readonly MqServerConfiguration _configuration;
 
         /// <summary>
@@ -132,23 +133,19 @@ namespace NTDLS.MemoryQueue
 
                 success = _messageQueues.TryUse(mq =>
                 {
-                    var filteredQueues = mq.Where(o => o.Value.QueueConfiguration.QueueName.Equals(queueName, StringComparison.OrdinalIgnoreCase));
-
-                    foreach (var q in filteredQueues)
+                    if (mq.TryGetValue(queueName, out var messageQueue))
                     {
-                        success = q.Value.Subscribers.TryUse(s =>
+                        success = messageQueue.Subscribers.TryUse(s =>
                         {
                             foreach (var subscriber in s)
                             {
                                 result.Add(subscriber.Value);
                             }
                         });
-
-                        if (!success)
-                        {
-                            //Failed to lock, break the inner loop and try again.
-                            break;
-                        }
+                    }
+                    else
+                    {
+                        throw new Exception($"Queue not found: [{queueName}].");
                     }
                 });
 
@@ -214,24 +211,23 @@ namespace NTDLS.MemoryQueue
         /// Returns a read-only copy messages in the queue.
         /// </summary>
         /// <returns></returns>
-        public ReadOnlyCollection<MqEnqueuedMessageInformation> GetQueueMessage(string queueName, Guid messageId)
+        public MqEnqueuedMessageInformation? GetQueueMessage(string queueName, Guid messageId)
         {
             while (true)
             {
                 bool success = false;
-                var result = new List<MqEnqueuedMessageInformation>();
+                MqEnqueuedMessageInformation? result = null;
 
                 success = _messageQueues.TryUse(mq =>
                 {
-                    var filteredQueues = mq.Where(o => o.Value.QueueConfiguration.QueueName.Equals(queueName, StringComparison.OrdinalIgnoreCase));
-                    foreach (var q in filteredQueues)
+                    if (mq.TryGetValue(queueName, out var messageQueue))
                     {
-                        success = q.Value.EnqueuedMessages.TryUse(m =>
+                        success = messageQueue.EnqueuedMessages.TryUse(m =>
                         {
                             var message = m.Where(o => o.MessageId == messageId).FirstOrDefault();
                             if (message != null)
                             {
-                                result.Add(new MqEnqueuedMessageInformation
+                                result = new MqEnqueuedMessageInformation
                                 {
                                     Timestamp = message.Timestamp,
                                     SubscriberMessageDeliveries = message.SubscriberMessageDeliveries.Keys.ToHashSet(),
@@ -239,21 +235,23 @@ namespace NTDLS.MemoryQueue
                                     ObjectType = message.ObjectType,
                                     MessageJson = message.MessageJson,
                                     MessageId = message.MessageId
-                                });
+                                };
+                            }
+                            else
+                            {
+                                throw new Exception($"Message not found: [{messageId}].");
                             }
                         });
-
-                        if (!success)
-                        {
-                            //Failed to lock, break the inner loop and try again.
-                            break;
-                        }
+                    }
+                    else
+                    {
+                        throw new Exception($"Queue not found: [{queueName}].");
                     }
                 });
 
-                if (success)
+                if (success && result != null)
                 {
-                    return new ReadOnlyCollection<MqEnqueuedMessageInformation>(result);
+                    return result;
                 }
 
                 Thread.Sleep(1); //Failed to lock, sleep then try again.
