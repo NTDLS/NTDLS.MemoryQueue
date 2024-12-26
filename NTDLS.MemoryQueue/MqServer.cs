@@ -74,7 +74,6 @@ namespace NTDLS.MemoryQueue
         /// <returns></returns>
         public ReadOnlyCollection<MqQueueInformation> GetQueues()
         {
-
             while (true)
             {
                 bool success = false;
@@ -90,12 +89,12 @@ namespace NTDLS.MemoryQueue
                             {
                                 BatchDeliveryInterval = q.Value.QueueConfiguration.BatchDeliveryInterval,
                                 ConsumptionScheme = q.Value.QueueConfiguration.ConsumptionScheme,
+                                CurrentEnqueuedMessageCount = m.Count,
                                 DeliveryScheme = q.Value.QueueConfiguration.DeliveryScheme,
                                 DeliveryThrottle = q.Value.QueueConfiguration.DeliveryThrottle,
                                 MaxDeliveryAttempts = q.Value.QueueConfiguration.MaxDeliveryAttempts,
                                 MaxMessageAge = q.Value.QueueConfiguration.MaxMessageAge,
                                 QueueName = q.Value.QueueConfiguration.QueueName,
-                                CurrentEnqueuedMessageCount = m.Count,
                                 TotalDeliveredMessages = q.Value.TotalDeliveredMessages,
                                 TotalEnqueuedMessages = q.Value.TotalEnqueuedMessages,
                                 TotalExpiredMessages = q.Value.TotalExpiredMessages
@@ -155,6 +154,56 @@ namespace NTDLS.MemoryQueue
                 if (success)
                 {
                     return new ReadOnlyCollection<MqSubscriberInformation>(result);
+                }
+
+                Thread.Sleep(1); //Failed to lock, sleep then try again.
+            }
+        }
+
+        /// <summary>
+        /// Returns a read-only copy messages in the queue.
+        /// </summary>
+        /// <returns></returns>
+        public ReadOnlyCollection<EnqueuedMessageInformation> GetQueueMessages(string queueName, int offset, int take)
+        {
+            while (true)
+            {
+                bool success = false;
+                var result = new List<EnqueuedMessageInformation>();
+
+                success = _messageQueues.TryUse(mq =>
+                {
+                    var filteredQueues = mq.Where(o => o.Value.QueueConfiguration.QueueName.Equals(queueName, StringComparison.OrdinalIgnoreCase));
+
+                    foreach (var q in mq)
+                    {
+                        success = q.Value.EnqueuedMessages.TryUse(m =>
+                        {
+                            foreach (var message in m.Skip(offset).Take(take))
+                            {
+                                result.Add(new EnqueuedMessageInformation
+                                {
+                                    Timestamp = message.Timestamp,
+                                    SubscriberMessageDeliveries = message.SubscriberMessageDeliveries.Keys.ToHashSet(),
+                                    SatisfiedSubscribersConnectionIDs = message.SatisfiedSubscribersConnectionIDs,
+                                    ObjectType = message.ObjectType,
+                                    MessageJson = message.MessageJson,
+                                    MessageId = message.MessageId
+                                });
+                            }
+                        });
+
+                        if (!success)
+                        {
+                            //Failed to lock, break the inner loop and try again.
+                            break;
+                        }
+                    }
+                });
+
+                if (success)
+                {
+                    return new ReadOnlyCollection<EnqueuedMessageInformation>(result);
                 }
 
                 Thread.Sleep(1); //Failed to lock, sleep then try again.
