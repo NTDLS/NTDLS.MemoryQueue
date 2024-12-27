@@ -1,4 +1,4 @@
-﻿using NTDLS.MemoryQueue.Management;
+using NTDLS.MemoryQueue.Management;
 using NTDLS.MemoryQueue.Payloads.Queries.ServerToClient;
 using NTDLS.MemoryQueue.Server;
 using NTDLS.MemoryQueue.Server.QueryHandlers;
@@ -296,6 +296,15 @@ namespace NTDLS.MemoryQueue
         public void Stop()
         {
             _rmServer.Stop();
+
+            _messageQueues.Use(o =>
+            {
+                //Stop all message queues.
+                foreach (var q in o)
+                {
+                    q.Value.Stop();
+                }
+            });
         }
 
         /// <summary>
