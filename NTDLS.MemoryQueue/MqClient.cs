@@ -235,11 +235,23 @@ namespace NTDLS.MemoryQueue
         }
 
         /// <summary>
-        /// Instructs the server delete the queue with the given name.
+        /// Instructs the server to delete the queue with the given name.
         /// </summary>
         public void DeleteQueue(string queueName)
         {
             var result = _rmClient.Query(new DeleteQueueQuery(queueName)).Result;
+            if (result.IsSuccess == false)
+            {
+                throw new Exception(result.ErrorMessage);
+            }
+        }
+
+        /// <summary>
+        /// Instructs the server to remove all messages from the queue with the given name.
+        /// </summary>
+        public void PurgeQueue(string queueName)
+        {
+            var result = _rmClient.Query(new PurgeQueueQuery(queueName)).Result;
             if (result.IsSuccess == false)
             {
                 throw new Exception(result.ErrorMessage);

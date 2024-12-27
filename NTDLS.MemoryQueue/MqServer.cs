@@ -357,13 +357,19 @@ namespace NTDLS.MemoryQueue
                 string queueKey = queueName.ToLowerInvariant();
                 if (o.TryGetValue(queueKey, out var messageQueue))
                 {
-                    messageQueue.Subscribers.Use(s => s.Add(connectionId, new MqSubscriberInformation(connectionId)
+                    messageQueue.Subscribers.Use(s =>
                     {
-                        LocalAddress = localEndpoint?.Address?.ToString(),
-                        RemoteAddress = remoteEndpoint?.Address?.ToString(),
-                        LocalPort = localEndpoint?.Port,
-                        RemotePort = remoteEndpoint?.Port
-                    }));
+                        if (s.ContainsKey(connectionId) == false)
+                        {
+                            s.Add(connectionId, new MqSubscriberInformation(connectionId)
+                            {
+                                LocalAddress = localEndpoint?.Address?.ToString(),
+                                RemoteAddress = remoteEndpoint?.Address?.ToString(),
+                                LocalPort = localEndpoint?.Port,
+                                RemotePort = remoteEndpoint?.Port
+                            });
+                        }
+                    });
                 }
             });
         }
@@ -396,6 +402,29 @@ namespace NTDLS.MemoryQueue
                     messageQueue.TotalEnqueuedMessages++;
                     messageQueue.EnqueuedMessages.Use(s => s.Add(new EnqueuedMessage(objectType, messageJson)));
                     messageQueue.DeliveryThreadWaitEvent.Set();
+                }
+                else
+                {
+                    throw new Exception($"Queue not found: [{queueName}].");
+                }
+            });
+        }
+
+        /// <summary>
+        /// Removes all messages from the given queue.
+        /// </summary>
+        internal void PurgeQueue(string queueName)
+        {
+            _messageQueues.Use(o =>
+            {
+                string queueKey = queueName.ToLowerInvariant();
+                if (o.TryGetValue(queueKey, out var messageQueue))
+                {
+                    messageQueue.EnqueuedMessages.Use(s => s.Clear());
+                }
+                else
+                {
+                    throw new Exception($"Queue not found: [{queueName}].");
                 }
             });
         }

@@ -35,6 +35,19 @@ namespace NTDLS.MemoryQueue.Server.QueryHandlers
             }
         }
 
+        public PurgeQueueQueryReply PurgeQueueQuery(RmContext context, PurgeQueueQuery param)
+        {
+            try
+            {
+                _mqServer.PurgeQueue(param.QueueName);
+                return new PurgeQueueQueryReply(true);
+            }
+            catch (Exception ex)
+            {
+                return new PurgeQueueQueryReply(ex.GetBaseException());
+            }
+        }
+
         public SubscribeToQueueQueryReply SubscribeToQueueQuery(RmContext context, SubscribeToQueueQuery param)
         {
             try
