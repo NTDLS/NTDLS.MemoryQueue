@@ -98,7 +98,7 @@ namespace NTDLS.MemoryQueue
                             {
                                 BatchDeliveryInterval = q.Value.QueueConfiguration.BatchDeliveryInterval,
                                 ConsumptionScheme = q.Value.QueueConfiguration.ConsumptionScheme,
-                                //CurrentEnqueuedMessageCount = m.Count,
+                                CurrentEnqueuedMessageCount = m.Count,
                                 DeliveryScheme = q.Value.QueueConfiguration.DeliveryScheme,
                                 DeliveryThrottle = q.Value.QueueConfiguration.DeliveryThrottle,
                                 MaxDeliveryAttempts = q.Value.QueueConfiguration.MaxDeliveryAttempts,
