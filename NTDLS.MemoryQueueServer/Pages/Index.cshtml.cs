@@ -16,13 +16,7 @@ namespace NTDLS.MemoryQueueServer.Pages
             try
             {
                 ServerConfig = mqServer.GetConfiguration();
-
-                var queues = mqServer.GetQueues();
-
-                foreach (var queue in queues)
-                {
-                    Queues.Add(queue);
-                }
+                Queues = mqServer.GetQueues()?.ToList() ?? new();
             }
             catch (Exception ex)
             {

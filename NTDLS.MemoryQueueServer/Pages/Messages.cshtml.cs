@@ -22,7 +22,7 @@ namespace NTDLS.MemoryQueueServer.Pages
         {
             try
             {
-                Messages = mqServer.GetQueueMessages(QueueName, PageNumber * PageSize, PageSize).ToList();
+                Messages = mqServer.GetQueueMessages(QueueName, PageNumber * PageSize, PageSize)?.ToList() ?? new();
             }
             catch (Exception ex)
             {

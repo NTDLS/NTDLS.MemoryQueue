@@ -19,8 +19,8 @@ namespace NTDLS.MemoryQueueServer.Pages
         {
             try
             {
-                Queue = mqServer.GetQueues().Where(o => o.QueueName.Equals(QueueName, StringComparison.OrdinalIgnoreCase)).FirstOrDefault() ?? new();
-                Subscribers = mqServer.GetSubscribers(Queue.QueueName).ToList();
+                Queue = mqServer.GetQueues()?.Where(o => o.QueueName.Equals(QueueName, StringComparison.OrdinalIgnoreCase))?.FirstOrDefault() ?? new();
+                Subscribers = mqServer.GetSubscribers(Queue.QueueName)?.ToList() ?? new();
             }
             catch (Exception ex)
             {

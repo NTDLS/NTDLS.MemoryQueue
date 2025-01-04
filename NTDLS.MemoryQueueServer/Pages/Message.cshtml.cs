@@ -21,7 +21,7 @@ namespace NTDLS.MemoryQueueServer.Pages
         {
             try
             {
-                Message = mqServer.GetQueueMessage(QueueName, MessageId);
+                Message = mqServer.GetQueueMessage(QueueName, MessageId) ?? new();
             }
             catch (Exception ex)
             {

@@ -14,6 +14,7 @@ namespace NTDLS.MemoryQueue
     /// </summary>
     public class MqServer
     {
+        private bool _keepRunning = false;
         private readonly RmServer _rmServer;
         private readonly PessimisticCriticalResource<CaseInsensitiveMessageQueueDictionary> _messageQueues = new();
         private readonly MqServerConfiguration _configuration;
@@ -81,18 +82,18 @@ namespace NTDLS.MemoryQueue
         /// Returns a read-only copy of the queues.
         /// </summary>
         /// <returns></returns>
-        public ReadOnlyCollection<MqQueueInformation> GetQueues()
+        public ReadOnlyCollection<MqQueueInformation>? GetQueues()
         {
-            while (true)
+            while (_keepRunning)
             {
-                bool success = false;
-                List<MqQueueInformation>? result = new();
+                bool success = true;
+                var result = new List<MqQueueInformation>();
 
-                success = _messageQueues.TryUse(mq =>
+                _messageQueues.Use(mq =>
                 {
                     foreach (var q in mq)
                     {
-                        var enqueuedMessagesSuccess = q.Value.EnqueuedMessages.TryUse(m =>
+                        success = q.Value.EnqueuedMessages.TryUse(10, m =>
                         {
                             result.Add(new MqQueueInformation
                             {
@@ -108,48 +109,49 @@ namespace NTDLS.MemoryQueue
                                 TotalEnqueuedMessages = q.Value.TotalEnqueuedMessages,
                                 TotalExpiredMessages = q.Value.TotalExpiredMessages
                             });
-                        });
+                        }) && success;
 
-                        if (!enqueuedMessagesSuccess)
+                        if (!success)
                         {
                             //Failed to lock, break the inner loop and try again.
-                            result = null;
                             break;
                         }
                     }
                 });
 
-                if (success && result != null)
+                if (success)
                 {
                     return new ReadOnlyCollection<MqQueueInformation>(result);
                 }
 
                 Thread.Sleep(1); //Failed to lock, sleep then try again.
             }
+
+            return null;
         }
 
         /// <summary>
         /// Returns a read-only copy of the queue subscribers.
         /// </summary>
         /// <returns></returns>
-        public ReadOnlyCollection<MqSubscriberInformation> GetSubscribers(string queueName)
+        public ReadOnlyCollection<MqSubscriberInformation>? GetSubscribers(string queueName)
         {
-            while (true)
+            while (_keepRunning)
             {
-                bool success = false;
+                bool success = true;
                 var result = new List<MqSubscriberInformation>();
 
-                success = _messageQueues.TryUse(mq =>
+                _messageQueues.Use(mq =>
                 {
                     if (mq.TryGetValue(queueName, out var messageQueue))
                     {
-                        success = messageQueue.Subscribers.TryUse(s =>
+                        success = messageQueue.Subscribers.TryUse(10, s =>
                         {
                             foreach (var subscriber in s)
                             {
                                 result.Add(subscriber.Value);
                             }
-                        });
+                        }) && success;
                     }
                     else
                     {
@@ -164,25 +166,26 @@ namespace NTDLS.MemoryQueue
 
                 Thread.Sleep(1); //Failed to lock, sleep then try again.
             }
+            return null;
         }
 
         /// <summary>
         /// Returns a read-only copy messages in the queue.
         /// </summary>
         /// <returns></returns>
-        public ReadOnlyCollection<MqEnqueuedMessageInformation> GetQueueMessages(string queueName, int offset, int take)
+        public ReadOnlyCollection<MqEnqueuedMessageInformation>? GetQueueMessages(string queueName, int offset, int take)
         {
-            while (true)
+            while (_keepRunning)
             {
-                bool success = false;
-                List<MqEnqueuedMessageInformation>? result = new();
+                bool success = true;
+                var result = new List<MqEnqueuedMessageInformation>();
 
-                success = _messageQueues.TryUse(mq =>
+                _messageQueues.Use(mq =>
                 {
                     var filteredQueues = mq.Where(o => o.Value.QueueConfiguration.QueueName.Equals(queueName, StringComparison.OrdinalIgnoreCase));
                     foreach (var q in filteredQueues)
                     {
-                        var enqueuedMessagesSuccess = q.Value.EnqueuedMessages.TryUse(m =>
+                        success = q.Value.EnqueuedMessages.TryUse(10, m =>
                         {
                             foreach (var message in m.Skip(offset).Take(take))
                             {
@@ -196,42 +199,41 @@ namespace NTDLS.MemoryQueue
                                     MessageId = message.MessageId
                                 });
                             }
-                        });
+                        }) && success;
 
-                        if (!enqueuedMessagesSuccess)
+                        if (!success)
                         {
-                            //Failed to lock, break the inner loop and try again.
-                            result = null;
-                            break;
+                            break; //Failed to lock, break the inner loop and try again.
                         }
                     }
                 });
 
-                if (success && result != null)
+                if (success)
                 {
                     return new ReadOnlyCollection<MqEnqueuedMessageInformation>(result);
                 }
 
                 Thread.Sleep(1); //Failed to lock, sleep then try again.
             }
+            return null;
         }
 
         /// <summary>
         /// Returns a read-only copy messages in the queue.
         /// </summary>
         /// <returns></returns>
-        public MqEnqueuedMessageInformation GetQueueMessage(string queueName, Guid messageId)
+        public MqEnqueuedMessageInformation? GetQueueMessage(string queueName, Guid messageId)
         {
-            while (true)
+            while (_keepRunning)
             {
-                bool success = false;
+                bool success = true;
                 MqEnqueuedMessageInformation? result = null;
 
-                success = _messageQueues.TryUse(mq =>
+                _messageQueues.Use(mq =>
                 {
                     if (mq.TryGetValue(queueName, out var messageQueue))
                     {
-                        success = messageQueue.EnqueuedMessages.TryUse(m =>
+                        success = messageQueue.EnqueuedMessages.TryUse(10, m =>
                         {
                             var message = m.Where(o => o.MessageId == messageId).FirstOrDefault();
                             if (message != null)
@@ -250,7 +252,7 @@ namespace NTDLS.MemoryQueue
                             {
                                 throw new Exception($"Message not found: [{messageId}].");
                             }
-                        });
+                        }) && success;
                     }
                     else
                     {
@@ -258,13 +260,14 @@ namespace NTDLS.MemoryQueue
                     }
                 });
 
-                if (success && result != null)
+                if (success)
                 {
                     return result;
                 }
 
                 Thread.Sleep(1); //Failed to lock, sleep then try again.
             }
+            return null;
         }
 
         internal void InvokeOnException(MqServer server, MqQueueConfiguration? queue, Exception ex)
@@ -272,20 +275,19 @@ namespace NTDLS.MemoryQueue
 
         private void RmServer_OnDisconnected(RmContext context)
         {
-            while (true)
+            while (_keepRunning)
             {
-                bool success = false;
+                bool success = true;
 
                 //When a client disconnects, remove their subscriptions.
-                _messageQueues.TryUse(mq =>
+                _messageQueues.Use(mq =>
                 {
                     foreach (var q in mq)
                     {
-                        q.Value.Subscribers.TryUse(s =>
+                        success = q.Value.Subscribers.TryUse(10, s =>
                         {
-                            success = true;
                             s.Remove(context.ConnectionId);
-                        });
+                        }) && success;
                     }
                 });
 
@@ -302,6 +304,7 @@ namespace NTDLS.MemoryQueue
         /// </summary>
         public void Start(int listenPort)
         {
+            _keepRunning = true;
             _rmServer.Start(listenPort);
         }
 
@@ -312,6 +315,7 @@ namespace NTDLS.MemoryQueue
         {
             _rmServer.Stop();
 
+            _keepRunning = false;
             _messageQueues.Use(o =>
             {
                 //Stop all message queues.
@@ -359,21 +363,20 @@ namespace NTDLS.MemoryQueue
         /// </summary>
         internal void DeleteQueue(string queueName)
         {
-            while (true)
+            string queueKey = queueName.ToLowerInvariant();
+
+            while (_keepRunning)
             {
-                bool success = false;
-                _messageQueues.TryUse(o =>
+                bool success = true;
+                _messageQueues.Use(o =>
                 {
-                    string queueKey = queueName.ToLowerInvariant();
                     if (o.TryGetValue(queueKey, out var messageQueue))
                     {
-                        messageQueue.EnqueuedMessages.TryUse(s =>
+                        success = messageQueue.EnqueuedMessages.TryUse(10, s =>
                         {
-                            success = true;
-
                             messageQueue.Stop();
                             o.Remove(queueKey);
-                        });
+                        }) && success;
                     }
                 });
 
@@ -390,18 +393,17 @@ namespace NTDLS.MemoryQueue
         /// </summary>
         internal void SubscribeToQueue(Guid connectionId, IPEndPoint? localEndpoint, IPEndPoint? remoteEndpoint, string queueName)
         {
-            while (true)
+            string queueKey = queueName.ToLowerInvariant();
+
+            while (_keepRunning)
             {
-                bool success = false;
-                _messageQueues.TryUse(o =>
+                bool success = true;
+                _messageQueues.Use(o =>
                 {
-                    string queueKey = queueName.ToLowerInvariant();
                     if (o.TryGetValue(queueKey, out var messageQueue))
                     {
-                        messageQueue.Subscribers.TryUse(s =>
+                        success = messageQueue.Subscribers.TryUse(10, s =>
                         {
-                            success = true;
-
                             if (s.ContainsKey(connectionId) == false)
                             {
                                 s.Add(connectionId, new MqSubscriberInformation(connectionId)
@@ -412,7 +414,7 @@ namespace NTDLS.MemoryQueue
                                     RemotePort = remoteEndpoint?.Port
                                 });
                             }
-                        });
+                        }) && success;
                     }
                 });
 
@@ -429,20 +431,20 @@ namespace NTDLS.MemoryQueue
         /// </summary>
         internal void UnsubscribeFromQueue(Guid connectionId, string queueName)
         {
-            while (true)
-            {
-                bool success = false;
+            string queueKey = queueName.ToLowerInvariant();
 
-                _messageQueues.TryUse(o =>
+            while (_keepRunning)
+            {
+                bool success = true;
+
+                _messageQueues.Use(o =>
                 {
-                    string queueKey = queueName.ToLowerInvariant();
                     if (o.TryGetValue(queueKey, out var messageQueue))
                     {
-                        messageQueue.Subscribers.TryUse(s =>
+                        success = messageQueue.Subscribers.TryUse(10, s =>
                         {
-                            success = true;
                             s.Remove(connectionId);
-                        });
+                        }) && success;
                     }
                 });
 
@@ -459,20 +461,21 @@ namespace NTDLS.MemoryQueue
         /// </summary>
         internal void EnqueueMessage(string queueName, string objectType, string messageJson)
         {
-            while (true)
+            string queueKey = queueName.ToLowerInvariant();
+
+            while (_keepRunning)
             {
-                bool success = false;
-                _messageQueues.TryUse(o =>
+                bool success = true;
+
+                _messageQueues.Use(o =>
                 {
-                    string queueKey = queueName.ToLowerInvariant();
                     if (o.TryGetValue(queueKey, out var messageQueue))
                     {
-                        messageQueue.EnqueuedMessages.TryUse(s =>
+                        success = messageQueue.EnqueuedMessages.TryUse(10, s =>
                         {
-                            success = true;
                             messageQueue.TotalEnqueuedMessages++;
                             s.Add(new EnqueuedMessage(objectType, messageJson));
-                        });
+                        }) && success;
                         messageQueue.DeliveryThreadWaitEvent.Set();
                     }
                     else
@@ -494,20 +497,20 @@ namespace NTDLS.MemoryQueue
         /// </summary>
         internal void PurgeQueue(string queueName)
         {
-            while (true)
-            {
-                bool success = false;
+            string queueKey = queueName.ToLowerInvariant();
 
-                _messageQueues.TryUse(o =>
+            while (_keepRunning)
+            {
+                bool success = true;
+
+                _messageQueues.Use(o =>
                 {
-                    string queueKey = queueName.ToLowerInvariant();
                     if (o.TryGetValue(queueKey, out var messageQueue))
                     {
-                        messageQueue.EnqueuedMessages.TryUse(s =>
+                        success = messageQueue.EnqueuedMessages.TryUse(10, s =>
                         {
-                            success = true;
                             s.Clear();
-                        });
+                        }) && success;
                     }
                     else
                     {

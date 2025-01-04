@@ -15,13 +15,13 @@
     <RepositoryUrl>https://github.com/NTDLS/NTDLS.MemoryQueue</RepositoryUrl>
     <PackageTags>ipc;message-queue;inter-process-communication;tcp-ip;message-broker;mq;</PackageTags>
     <PackageReleaseNotes>
-      Fixed issue querying queues and messages.
+      Dependency updates and improved locking.
     </PackageReleaseNotes>
     <RepositoryType>git</RepositoryType>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <Authors>NetworkDLS</Authors>
     <Company>NetworkDLS</Company>
-    <version>2.2.13</version>
+    <version>2.2.14</version>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageIcon>Logo.png</PackageIcon>
     <ApplicationIcon>Logo.ico</ApplicationIcon>
@@ -47,7 +47,7 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="9.0.0" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
-    <PackageReference Include="NTDLS.ReliableMessaging" Version="1.11.4" />
+    <PackageReference Include="NTDLS.ReliableMessaging" Version="1.11.5" />
   </ItemGroup>
 
 </Project>
