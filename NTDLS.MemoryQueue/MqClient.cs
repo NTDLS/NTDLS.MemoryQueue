@@ -125,7 +125,7 @@ namespace NTDLS.MemoryQueue
             _rmClient.AddHandler(new InternalClientQueryHandlers(this));
         }
 
-        private void RmClient_OnConnected(RmContext context)
+        private void RmClient_OnConnected(RmContext context, bool isReconnect)
         {
             _explicitDisconnect = false;
             OnConnected?.Invoke(this);
@@ -215,7 +215,7 @@ namespace NTDLS.MemoryQueue
         /// </summary>
         public void CreateQueue(string queueName)
         {
-            var result = _rmClient.Query(new CreateQueueQuery(new MqQueueConfiguration(queueName))).Result;
+            var result = _rmClient.Query(new CreateQueueQuery(new MqQueueConfiguration(queueName)));
             if (result.IsSuccess == false)
             {
                 throw new Exception(result.ErrorMessage);
@@ -227,7 +227,7 @@ namespace NTDLS.MemoryQueue
         /// </summary>
         public void CreateQueue(MqQueueConfiguration queueConfiguration)
         {
-            var result = _rmClient.Query(new CreateQueueQuery(queueConfiguration)).Result;
+            var result = _rmClient.Query(new CreateQueueQuery(queueConfiguration));
             if (result.IsSuccess == false)
             {
                 throw new Exception(result.ErrorMessage);
@@ -239,7 +239,7 @@ namespace NTDLS.MemoryQueue
         /// </summary>
         public void DeleteQueue(string queueName)
         {
-            var result = _rmClient.Query(new DeleteQueueQuery(queueName)).Result;
+            var result = _rmClient.Query(new DeleteQueueQuery(queueName));
             if (result.IsSuccess == false)
             {
                 throw new Exception(result.ErrorMessage);
@@ -251,7 +251,7 @@ namespace NTDLS.MemoryQueue
         /// </summary>
         public void PurgeQueue(string queueName)
         {
-            var result = _rmClient.Query(new PurgeQueueQuery(queueName)).Result;
+            var result = _rmClient.Query(new PurgeQueueQuery(queueName));
             if (result.IsSuccess == false)
             {
                 throw new Exception(result.ErrorMessage);
@@ -263,7 +263,7 @@ namespace NTDLS.MemoryQueue
         /// </summary>
         public void Subscribe(string queueName)
         {
-            var result = _rmClient.Query(new SubscribeToQueueQuery(queueName)).Result;
+            var result = _rmClient.Query(new SubscribeToQueueQuery(queueName));
             if (result.IsSuccess == false)
             {
                 throw new Exception(result.ErrorMessage);
@@ -275,7 +275,7 @@ namespace NTDLS.MemoryQueue
         /// </summary>
         public void Unsubscribe(string queueName)
         {
-            var result = _rmClient.Query(new UnsubscribeFromQueueQuery(queueName)).Result;
+            var result = _rmClient.Query(new UnsubscribeFromQueueQuery(queueName));
             if (result.IsSuccess == false)
             {
                 throw new Exception(result.ErrorMessage);
@@ -294,7 +294,7 @@ namespace NTDLS.MemoryQueue
             var parts = assemblyQualifiedName.Split(','); //We only want the first two parts, not the version and such.
             var objectType = parts.Length > 1 ? $"{parts[0]},{parts[1].Trim()}" : assemblyQualifiedName;
 
-            var result = _rmClient.Query(new EnqueueMessageToQueue(queueName, objectType, messageJson)).Result;
+            var result = _rmClient.Query(new EnqueueMessageToQueue(queueName, objectType, messageJson));
             if (result.IsSuccess == false)
             {
                 throw new Exception(result.ErrorMessage);

@@ -331,7 +331,7 @@ namespace NTDLS.MemoryQueue
         /// </summary>
         internal bool DeliverMessage(Guid connectionId, string queueName, EnqueuedMessage enqueuedMessage)
         {
-            var result = _rmServer.Query(connectionId, new MessageDeliveryQuery(queueName, enqueuedMessage.ObjectType, enqueuedMessage.MessageJson)).Result;
+            var result = _rmServer.Query(connectionId, new MessageDeliveryQuery(queueName, enqueuedMessage.ObjectType, enqueuedMessage.MessageJson));
             if (string.IsNullOrEmpty(result.ErrorMessage) == false)
             {
                 throw new Exception(result.ErrorMessage);
